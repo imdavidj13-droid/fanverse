@@ -1,12 +1,12 @@
 # Fanverse
 
-A website-first multi-fandom social platform for music, TV and film communities. Fanverse is a working name.
+A website-first multi-fandom social platform for music, TV and film communities. Fanverse is the internal project/repository name only. Public branding is undecided; the interface uses “Your fandoms” as a descriptive placeholder.
 
 ## Current implementation
 
-React + TypeScript + Vite frontend using the approved Design 1 direction: white surfaces, soft lilac and violet accents. Responsive desktop, tablet and mobile layouts.
+React + TypeScript + Vite frontend using the approved Design 1 direction: white surfaces, soft lilac and violet accents. Responsive desktop, tablet and mobile layouts. The compact feed follows the supplied reference while retaining white surfaces and lilac/violet accents. Trending, illustrative listening-party cards and suggested fandoms occupy the right rail; mobile includes quick fandom filters.
 
-The interactive preview includes feed tabs, fandom pages, join/leave controls, text posting, likes, bookmarks, local replies, repost toggles, illustrative polls, search, a demo profile, and a mobile post composer. Notifications and messages clearly explain that their backend is not connected. Concert artwork is an original CSS illustration, not artist photography.
+The interactive preview includes feed tabs, fandom pages, join/leave controls, text posting, likes, bookmarks, local replies, repost toggles, illustrative polls, search, a demo profile, and a mobile post composer. Notifications and messages clearly explain that their backend is not connected. The concert moodboard uses a stock crowd photograph from Unsplash, not a photo of a named artist or claimed event. Artist portraits remain placeholders. Photo source: https://images.unsplash.com/photo-1459749411175-04bf5292ceea .
 
 All posts, people, counts and poll percentages are illustrative. Interactions are held in memory and reset on refresh. No authentication, uploads, database, private messaging or shared persistence exists yet.
 
