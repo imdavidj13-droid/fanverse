@@ -1,46 +1,53 @@
 # Fanverse
 
-A website-first social platform for fans of music, television and film. Fanverse is a working name.
+A website-first multi-fandom social platform for music, TV and film communities. Fanverse is a working name.
 
-## Project status
+## Current implementation
 
-Repository initialized. The application has not been implemented or deployed yet.
+React + TypeScript + Vite frontend using the approved Design 1 direction: white surfaces, soft lilac and violet accents. Responsive desktop, tablet and mobile layouts.
 
-## Product direction
+The interactive preview includes feed tabs, fandom pages, join/leave controls, text posting, likes, bookmarks, local replies, repost toggles, illustrative polls, search, a demo profile, and a mobile post composer. Notifications and messages clearly explain that their backend is not connected. Concert artwork is an original CSS illustration, not artist photography.
 
-- A proper social interface with profiles, posts, replies, likes, reposts and bookmarks.
-- People can belong to multiple fandoms, starting with artists such as Sabrina Carpenter, Taylor Swift and Olivia Rodrigo.
-- Dedicated fandom spaces, with room to expand into TV and film.
-- Responsive layouts for desktop and mobile browsers.
+All posts, people, counts and poll percentages are illustrative. Interactions are held in memory and reset on refresh. No authentication, uploads, database, private messaging or shared persistence exists yet.
 
-## Feed proposal — awaiting a final decision
+## Feed behaviour being evaluated
 
-- Home combines joined fandoms and followed people.
-- Following shows posts from followed accounts.
-- Each fandom has its own focused feed.
-- Explore helps people discover other communities.
-- Joining a fandom does not automatically follow its members.
-- Suggested posts from unjoined fandoms are optional.
-- Members can keep an individual fandom out of Home.
+Home currently mixes joined fandoms, Following filters followed demo accounts, and My fandoms filters posts to joined communities. Individual fandom pages show that community's posts. Joining a fandom does not follow its members. These preview behaviours remain open to refinement; backend policies are not finalized.
 
-These are proposals from the planning discussion, not approved implementation requirements.
+## Local development
 
-## Design direction
+Install Node.js 22 or newer. From the project directory:
 
-Three visual concepts have been explored: a clean white/lilac feed, a dark concert-inspired feed, and a colourful community-focused layout. No final concept has been selected. Artist images, post counts and event details in the mockups are illustrative.
+```sh
+npm ci
+npm run dev
+```
 
-## First development milestones
+Open the local URL printed by Vite. From Windows PowerShell, the same commands work.
 
-1. Agree the feed behaviour and visual direction.
-2. Build a responsive interface using clearly labelled demo data.
-3. Add accounts, profiles, fandom membership and persistent posts.
-4. Add moderation, reporting, blocking and spam controls before a public launch.
-5. Add notifications and further community features in stages.
+```sh
+npm run typecheck
+npm run build
+npm run preview
+```
 
-## Technical decisions
+## Cloudflare Workers setup
 
-The framework, hosting, database, authentication provider and media storage are not selected yet. Keep costs visible and agree any paid service before introducing it.
+This repo includes a static-assets-only Worker configuration in `wrangler.jsonc`. No Cloudflare database, backend or paid service is provisioned by this configuration.
 
-## Development
+For Git integration:
 
-See [AGENTS.md](AGENTS.md) for project guidelines. There are no install or run commands until the application scaffold is added.
+- Project name: `fanverse`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Preview command: `npx wrangler versions upload`
+- Root directory: repository root
+- Cloudflare Access: off for a publicly accessible site
+
+Cloudflare installs dependencies before building. Deploy only when ready to publish. The frontend does not require secrets or environment variables.
+
+## Next development stages
+
+Choose backend/database/authentication with explicit cost review; implement persistent accounts, posts and community memberships; add authorization, moderation, blocking, reporting and spam controls before accepting public user content. Do not imply fan communities are official artist accounts.
+
+See AGENTS.md for development guidelines.

@@ -10,5 +10,6 @@ coverage/
 .dev.vars
 .dev.vars.*
 *.log
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
