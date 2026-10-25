@@ -33,6 +33,8 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePanel } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { SignupLanding } from "./SignupLanding";
+import { api } from "./api";
 import { PartiesRail } from "./ListeningParties";
 import { FandomPage, FandomSidebar } from "./FandomPage";
 import { AppLink as Link } from "./Navigation";
@@ -69,6 +71,9 @@ function App() {
     [compose, setCompose] = useState(false),
     [notice, setNotice] = useState(""),
     [saveError, setSaveError] = useState("");
+  const [previewAccess,setPreviewAccess] = useState(() => { try { return sessionStorage.getItem("fanverse.preview-entry") === "yes"; } catch { return false; } });
+  const [authenticated,setAuthenticated] = useState(false);
+  useEffect(() => { let active = true; const check = async () => { try { const status = await api<{ready:boolean}>("/api/status"); const me = status.ready ? await api<{profile:unknown}>("/api/me") : null; if(active)setAuthenticated(Boolean(me?.profile)); } catch { if(active)setAuthenticated(false); } }; void check(); window.addEventListener("fanverse-auth-changed",check); return () => { active=false; window.removeEventListener("fanverse-auth-changed",check); }; }, []);
   const dialog = useRef<HTMLDialogElement>(null);
   const update = (fn: (s: State) => State) =>
     setState((before) => recordActivity(before, fn(before)));
@@ -83,8 +88,8 @@ function App() {
     }
   }, [state]);
   useEffect(() => {
-    document.title = `${active ? fandoms.find((f) => f.id === active)?.name : page} · Your fandoms`;
-  }, [page, active]);
+    document.title = page === "Sign up" || (page === "Home" && !active && !previewAccess && !authenticated) ? "Join your fandoms" : `${active ? fandoms.find((f) => f.id === active)?.name : page} · Your fandoms`;
+  }, [page, active, previewAccess, authenticated]);
   useEffect(() => {
     if (compose) dialog.current?.showModal();
     else dialog.current?.close();
@@ -123,6 +128,7 @@ function App() {
         Number(a.id === state.profileStyle.pinnedPostId),
     );
   const community = fandoms.find((f) => f.id === active);
+  if (["Sign up","Sign in"].includes(page) || (page === "Home" && !active && !previewAccess && !authenticated)) return <SignupLanding initialMode={page === "Sign in" ? "login" : "signup"} onExplore={() => { setPreviewAccess(true); try { sessionStorage.setItem("fanverse.preview-entry","yes"); } catch { /* This visit still works. */ } navigate("/"); }} onAuthenticated={() => { setAuthenticated(true); navigate("/"); }} />;
   return (
     <>
       <a className="skip" href="#main">

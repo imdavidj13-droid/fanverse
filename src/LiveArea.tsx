@@ -52,6 +52,7 @@ export function LiveArea({ page }: { page: string }) {
       setProfile(null);
       setRefresh((n) => n + 1);
       setStatus("Signed out.");
+      window.dispatchEvent(new Event("fanverse-auth-changed"));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -207,14 +208,15 @@ export function LiveArea({ page }: { page: string }) {
     </section>
   );
 }
-function AuthForm({ onSignedIn }: { onSignedIn: () => void }) {
+export function AuthForm({ onSignedIn, initialMode = "login", enabled = true }: { onSignedIn: () => void; initialMode?: "login" | "signup"; enabled?: boolean }) {
   const token = new URLSearchParams(location.search).get("token"),
-    [mode, setMode] = useState(token ? "reset" : "login"),
+    [mode, setMode] = useState(token ? "reset" : initialMode),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!enabled) return;
     const data = new FormData(event.currentTarget);
     setError("");
     setNotice("");
@@ -320,7 +322,7 @@ function AuthForm({ onSignedIn }: { onSignedIn: () => void }) {
           </p>
         )}
         {notice && <p role="status">{notice}</p>}
-        <button className="primary" disabled={busy}>
+        <button className="primary" disabled={busy || !enabled}>
           {busy
             ? "Please wait…"
             : mode === "signup"

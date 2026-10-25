@@ -451,3 +451,24 @@ test("admin account search and membership feeds use the database, not browser ro
   assert.ok(feed.value.items.every((p) => p.fandom_id === "taylor"));
   assert.equal((await req("/api/posts?feed=bookmarks")).status, 401);
 });
+
+test("signup method availability is truthful and never exposes credentials",async()=>{
+  const response=await mf.dispatchFetch(base+'/api/auth-methods');
+  assert.deepEqual(await response.json(),{email:true,phone:false,google:false,apple:false});
+  const empty=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat']}));
+  try{assert.deepEqual(await (await empty.dispatchFetch(base+'/api/auth-methods')).json(),{email:false,phone:false,google:false,apple:false})}finally{await empty.dispose()}
+});
+test("OAuth starts only for configured providers and cross-origin requests cannot initiate it",async()=>{
+  const oauth=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings:{BETTER_AUTH_URL:base,BETTER_AUTH_SECRET:'oauth-only-test-secret-1234567890123456789',AUTH_DEV_MODE:'true',GOOGLE_CLIENT_ID:'fixture-google-client',GOOGLE_CLIENT_SECRET:'never-display-this-test-secret',APPLE_CLIENT_ID:'fixture-apple-client',APPLE_CLIENT_SECRET:'never-display-this-apple-test-secret'}}));
+  try{
+    const database=await oauth.getD1Database('DB');
+    for(const file of (await readdir('migrations')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').map(s=>s.trim()).filter(Boolean))await database.prepare(sql).run();
+    const methods=await (await oauth.dispatchFetch(base+'/api/auth-methods')).json();assert.equal(methods.google,true);assert.equal(methods.apple,true);assert.ok(!JSON.stringify(methods).includes('secret'));
+    const make=(origin)=>oauth.dispatchFetch(base+'/api/auth/sign-in/social',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({provider:'google',callbackURL:base+'/account'})});
+    assert.equal((await make('https://evil.test')).status,403);
+    const started=await make(base);assert.equal(started.status,200);const body=await started.json();assert.equal(new URL(body.url).hostname,'accounts.google.com');assert.ok(!JSON.stringify(body).includes('never-display'));
+    const bad=await oauth.dispatchFetch(base+'/api/auth/callback/apple',{method:'POST',headers:{Origin:'https://evil.test','Content-Type':'application/x-www-form-urlencoded'},body:'code=invalid&state=invalid'});assert.equal(bad.status,403);
+    const apple=await oauth.dispatchFetch(base+'/api/auth/callback/apple',{method:'POST',headers:{Origin:'https://appleid.apple.com','Content-Type':'application/x-www-form-urlencoded'},body:'code=invalid&state=invalid',redirect:'manual'});assert.equal(apple.status,302);
+    const finish=await oauth.dispatchFetch(apple.headers.get('location'),{redirect:'manual'});assert.equal(finish.status,302);assert.ok(finish.headers.get('location').includes('/login'));assert.equal(await database.prepare('SELECT COUNT(*) total FROM user').first('total'),0);
+  }finally{await oauth.dispose()}
+});

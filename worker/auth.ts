@@ -29,7 +29,12 @@ export function createAuth(env: Env) {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
-    trustedOrigins: [new URL(env.BETTER_AUTH_URL!).origin],
+    trustedOrigins: [new URL(env.BETTER_AUTH_URL!).origin, ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET ? ["https://appleid.apple.com"] : [])],
+    onAPIError: { errorURL: new URL("/login", env.BETTER_AUTH_URL!).href },
+    socialProviders: {
+      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } } : {}),
+      ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET ? { apple: { clientId: env.APPLE_CLIENT_ID, clientSecret: env.APPLE_CLIENT_SECRET } } : {}),
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 12,

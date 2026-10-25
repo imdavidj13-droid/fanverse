@@ -7,6 +7,10 @@ export interface Env {
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   AUTH_DEV_MODE?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  APPLE_CLIENT_ID?: string;
+  APPLE_CLIENT_SECRET?: string;
 }
 export const fandomIds = ["taylor", "sabrina", "olivia", "screen"];
 export function isLocal(url: string) {

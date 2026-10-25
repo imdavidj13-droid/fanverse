@@ -38,7 +38,7 @@ export default {
           );
         return await cataloguePublic(request, env);
       }
-      if (path === "/api/status") {
+      if (path === "/api/status" || path === "/api/auth-methods") {
         let ready =
           configured(env) &&
           new URL(env.BETTER_AUTH_URL!).origin === url.origin;
@@ -53,6 +53,11 @@ export default {
             ready = false;
           }
         }
+        if (path === "/api/auth-methods") return json({
+          email: ready, phone: false,
+          google: Boolean(ready && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+          apple: Boolean(ready && env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET),
+        });
         return json({ ready, mode: ready ? "shared" : "preview" });
       }
       if (
@@ -78,9 +83,16 @@ export default {
           503,
           "The community database setup is not complete yet.",
         );
-      checkOrigin(request, env);
+      const appleReturn = path === "/api/auth/callback/apple" && request.method === "POST" && Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET) && request.headers.get("origin") === "https://appleid.apple.com";
+      if (!appleReturn) checkOrigin(request, env);
+      if (appleReturn) {
+        if (!request.headers.get("content-type")?.includes("application/x-www-form-urlencoded")) throw new HttpError(415,"Invalid Apple callback format.");
+        const reader = request.clone().body?.getReader();
+        let size = 0;
+        if (reader) while (true) { const chunk = await reader.read(); if(chunk.done)break; size+=chunk.value.byteLength; if(size>12000){void reader.cancel();throw new HttpError(413,"Request is too large.");} }
+      }
       if (path.startsWith("/api/auth/")) {
-        if (!["GET", "HEAD"].includes(request.method))
+        if (!appleReturn && !["GET", "HEAD"].includes(request.method))
           await body(request.clone());
         return await createAuth(env).handler(request);
       }
