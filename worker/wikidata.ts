@@ -1,5 +1,6 @@
 import {
   ids,
+  catalogueSearchResults,
   toSubject,
   validQid,
   type CatalogueSubject,
@@ -151,12 +152,12 @@ export class WikidataClient {
       language: "en",
       uselang: "en",
       type: "item",
-      limit: "8",
+      limit: "20",
     });
     const results = (value.search as { id: string }[]) || [];
     const qids = Array.from(new Set(results.map((r) => r.id).filter(validQid)));
     if (!qids.length) return [];
-    return this.hydrate(qids);
+    return catalogueSearchResults(await this.hydrate(qids), query);
   }
   async get(qid: string) {
     if (!validQid(qid)) throw new HttpError(400, "Invalid catalogue ID.");

@@ -124,3 +124,18 @@ export function toSubject(
     revision: Number.isSafeInteger(entity.lastrevid) ? entity.lastrevid! : null,
   };
 }
+
+// Public discovery contains fandom subjects, rather than everything mentioning them.
+export function searchableSubject(subject: { kind: string }) {
+  return ["artist", "tv", "film"].includes(subject.kind);
+}
+export function catalogueSearchResults(subjects: CatalogueSubject[], query: string) {
+  const eligible = subjects.filter(searchableSubject);
+  const name = normalizeName(query);
+  const exact = eligible.filter(subject => normalizeName(subject.name) === name);
+  const aliases = eligible.filter(subject =>
+    subject.aliases.some(label => normalizeName(label) === name),
+  );
+  // Keep distinct identities with the same name; never deduplicate by display title.
+  return exact.length ? exact : aliases.length ? aliases : eligible;
+}

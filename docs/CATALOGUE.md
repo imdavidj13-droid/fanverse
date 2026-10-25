@@ -5,7 +5,7 @@
 `/catalogue` searches Wikidata through read-only Worker endpoints. The catalogue endpoints run before the account/database configuration gate, so public lookup does not require a D1 binding, account or provider API key.
 
 - Search is submitted explicitly, not on every keystroke.
-- Up to eight source matches are hydrated together with bounded type/occupation ancestry checks.
+- Up to 20 source matches are hydrated together with bounded type/occupation ancestry checks.
 - English or multilingual labels, English descriptions, aliases, source revision and Wikidata IDs are used. No Wikipedia article text or third-party images are imported.
 - Source results keep their IDs and types. A similarly named album is not assumed to be its artist or a TV series.
 - Supported music performers/groups, TV series and films can be activated after accounts/D1 are connected. Album classifications are excluded as standalone fandoms. Uncertain records need administrator review.
@@ -61,3 +61,7 @@ Browser checks cover both no-D1 staging and connected local activation, includin
 - https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits
 
 Structured Wikidata metadata is CC0. Images and other linked material have separate rights and are intentionally not imported by this feature.
+
+## Public search eligibility
+
+Search returns positively classified artists/performers, television series and films only. Albums, perfumes, discographies and unclassified related topics are excluded. Exact primary names take precedence over aliases, which take precedence over broader matching titles. Separate eligible identities sharing a name remain distinct by Wikidata ID. Direct subject inspection and staff review remain available for uncertain records. Up to 20 upstream candidates are classified per lookup.

@@ -4,6 +4,7 @@ import { AppLink } from "./Navigation";
 import { navigate, useRoute, fandomPath } from "./routes";
 import {
   seededSubjects,
+  searchableSubject,
   validQid,
   type CatalogueSubject,
 } from "../shared/catalogue";
@@ -15,7 +16,7 @@ function readPlan(): Planned[] {
     const value = JSON.parse(localStorage.getItem(planKey) || "[]");
     return Array.isArray(value)
       ? value
-          .filter((p) => validQid(p.qid) && typeof p.name === "string")
+          .filter((p) => validQid(p.qid) && typeof p.name === "string" && searchableSubject(p))
           .slice(0, 30)
       : [];
   } catch {
@@ -152,7 +153,7 @@ export function CatalogueBrowser({ initialQid }: { initialQid?: string }) {
       setBusy(false);
     }
   }
-  const visible = items.filter((item) => kind === "all" || item.kind === kind);
+  const visible = items.filter((item) => searchableSubject(item) && (kind === "all" || item.kind === kind));
   return (
     <>
       <div className="local-page-title">
@@ -211,7 +212,6 @@ export function CatalogueBrowser({ initialQid }: { initialQid?: string }) {
             <option value="artist">Artists & performers</option>
             <option value="tv">TV series</option>
             <option value="film">Films</option>
-            <option value="review">Needs review</option>
           </select>
         </label>
         <span>
@@ -363,8 +363,8 @@ export function CatalogueBrowser({ initialQid }: { initialQid?: string }) {
         <div className="empty-state">
           <h2>No matching catalogue subjects</h2>
           <p>
-            Try the original title or a different subject type. An unknown
-            record will need review rather than creating a competing fandom.
+            Try the artist’s name or the show or film’s title. Search only includes
+            artists, TV series and films; albums, products and related topics are excluded.
           </p>
         </div>
       )}

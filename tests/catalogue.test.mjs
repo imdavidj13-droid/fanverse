@@ -56,6 +56,10 @@ export const fixtureEntities = {
 };
 fixtureEntities.Q9990008 = { ...fixtureEntities.Q9990001, id: "Q9990001" };
 fixtureEntities.Q9990009 = { ...fixtureEntities.Q9990001, id: "Q9990009" };
+fixtureEntities.Q9990010 = { id: "Q9990010", labels: { en: { value: "Fixture artist perfume" } }, claims: { P31: [claim("Q12144")] } };
+fixtureEntities.Q9990011 = { id: "Q9990011", labels: { en: { value: "Fixture artist discography" } }, claims: { P31: [claim("Q273057")] } };
+fixtureEntities.Q9990013 = { ...fixtureEntities.Q9990003, id: "Q9990013", labels: { en: { value: "Same title: another adaptation" } }, aliases: { en: [{ value: "Same title" }] } };
+fixtureEntities.Q9990012 = { ...fixtureEntities.Q9990002, id: "Q9990012", labels: { en: { value: "Fixture artist: concert film" } } };
 let sourceCalls = 0;
 export async function fixtureSource(request) {
   sourceCalls++;
@@ -67,10 +71,14 @@ export async function fixtureSource(request) {
     });
   if (p.get("action") === "wbsearchentities") {
     const ids =
-      p.get("search") === "redirected"
+      p.get("search") === "Fixture artist"
+        ? ["Q9990004", "Q9990010", "Q9990011", "Q9990005", "Q9990012", "Q9990001"]
+        : p.get("search") === "Same title"
+          ? ["Q9990004", "Q9990003", "Q9990002", "Q9990013"]
+        : p.get("search") === "redirected"
         ? ["Q9990001", "Q9990008"]
         : p.get("search") === "ambiguous"
-          ? ["Q9990004", "Q9990003", "Q9990002"]
+          ? ["Q9990004", "Q9990003", "Q9990002", "Q9990013"]
           : p.get("search") === "missing"
             ? []
             : ["Q9990001"];
@@ -192,9 +200,7 @@ test("catalogue search works with no database, preserves disambiguation and cach
     assert.equal(response.status, 200);
     const result = await response.json();
     assert.equal(result.directoryConnected, false);
-    assert.equal(result.items[0].kind, "unsupported");
-    assert.equal(result.items[1].kind, "tv");
-    assert.equal(result.items[2].kind, "film");
+    assert.deepEqual(result.items.map(s => s.kind), ["tv", "film", "tv"]);
     const previous = sourceCalls;
     response = await preview.dispatchFetch(
       base + "/api/catalogue/search?q=ambiguous",
@@ -605,4 +611,15 @@ test("account writes wait until the catalogue schema migration is complete", asy
   } finally {
     await db.prepare("UPDATE app_meta SET version=2").run();
   }
+});
+
+test("artist searches exclude albums, perfume, discographies and related works", async () => {
+  const result = await req("/api/catalogue/search?q=Fixture%20artist");
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.value.items.map(s => s.qid), ["Q9990001"]);
+});
+test("exact show titles preserve separate legitimate productions", async () => {
+  const result = await req("/api/catalogue/search?q=Same%20title");
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.value.items.map(s => s.qid), ["Q9990003", "Q9990002"]);
 });
