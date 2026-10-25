@@ -18,7 +18,6 @@ import {
   Clapperboard,
   CalendarDays,
   Headphones,
-  ArrowLeft,
   Settings,
 } from "lucide-react";
 import { fandoms, type Post } from "./data";
@@ -34,6 +33,7 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePanel } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { FandomPage, FandomSidebar } from "./FandomPage";
 import { AppLink as Link } from "./Navigation";
 import { LocalPages } from "./LocalPages";
 import { recordActivity } from "./activity";
@@ -292,7 +292,9 @@ function App() {
                 </div>
               ) : (
                 <>
-                  {["Account", "Community", "Admin"].includes(page) ? (
+                  {community ? (
+                    <FandomPage key={community.id} community={community} state={state} update={update} onNotice={setNotice} />
+                  ) : ["Account", "Community", "Admin"].includes(page) ? (
                     <LiveArea page={page} />
                   ) : [
                       "Explore",
@@ -312,34 +314,7 @@ function App() {
                     />
                   ) : (
                     <>
-                      {community ? (
-                        <div className="community-header">
-                          <Link className="back" href="/fandoms">
-                            <ArrowLeft size={17} />
-                            All fandoms
-                          </Link>
-                          <span
-                            className="community-symbol"
-                            style={{ background: community.color }}
-                          >
-                            {community.symbol}
-                          </span>
-                          <h1>{community.name}</h1>
-                          <p>{community.description}</p>
-                          <button
-                            className={
-                              state.joined.includes(active)
-                                ? "secondary"
-                                : "primary"
-                            }
-                            onClick={() => membership(active)}
-                          >
-                            {state.joined.includes(active)
-                              ? "Joined ✓"
-                              : "Join fandom"}
-                          </button>
-                        </div>
-                      ) : page === "Home" ? (
+                      {page === "Home" ? (
                         <>
                           <h1 className="sr-only">Home feed</h1>
                           <div className="tabs" aria-label="Feed filter">
@@ -577,6 +552,7 @@ function App() {
               )}
             </main>
             <aside className="rightbar">
+              {community ? <FandomSidebar community={community} /> : <>
               <section className="rail-card">
                 <div className="rail-title">
                   <h2>Trending now</h2>
@@ -691,6 +667,7 @@ function App() {
                 Made for the things you love. ♡<br />
                 Community preview · Name to come
               </p>
+              </>}
             </aside>
           </div>
         </div>

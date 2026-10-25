@@ -20,18 +20,20 @@ export function Composer({
   onNotice,
   initialFandom = "taylor",
   context = "home",
+  fixedFandom,
 }: {
   profile: Profile;
   onPublish: (post: Post) => void;
   onNotice: (message: string) => void;
   initialFandom?: string;
   context?: string;
+  fixedFandom?: string;
 }) {
   const [recovered] = useState(() => readDraft(context, initialFandom));
   const [restored, setRestored] = useState(Boolean(recovered)),
     [draftSaved, setDraftSaved] = useState(false);
   const [text, setText] = useState(recovered?.text || ""),
-    [fandom, setFandom] = useState(recovered?.fandom || initialFandom),
+    [fandom, setFandom] = useState(fixedFandom || recovered?.fandom || initialFandom),
     [image, setImage] = useState(""),
     [alt, setAlt] = useState(recovered?.alt || ""),
     [poll, setPoll] = useState<string[] | null>(recovered?.poll || null),
@@ -250,10 +252,11 @@ export function Composer({
         </button>
         <select
           aria-label="Post fandom"
+          disabled={Boolean(fixedFandom)}
           value={fandom}
           onChange={(e) => setFandom(e.target.value)}
         >
-          {fandoms.map((f) => (
+          {fandoms.filter(f => !fixedFandom || f.id === fixedFandom).map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
             </option>

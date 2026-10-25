@@ -9,6 +9,7 @@ import {
   type CatalogueSubject,
 } from "../shared/catalogue";
 import { SharedFeed } from "./LiveArea";
+import { FandomShell, FandomEvents, FandomAbout } from "./FandomPage";
 type Planned = { qid: string; name: string; kind: string; sourceUrl: string };
 const planKey = "fanverse.catalogue-plan.v1";
 function readPlan(): Planned[] {
@@ -407,6 +408,9 @@ export function CatalogueBrowser({ initialQid }: { initialQid?: string }) {
   );
 }
 export function CatalogueFandom() {
+  useRoute();
+  const section = new URLSearchParams(location.search).get("section") || "discussions";
+  const tab = ["discussions", "media", "events", "about"].includes(section) ? section : "discussions";
   const slug = location.pathname.split("/").pop()!,
     qid = slug.match(/-q(\d+)$/)?.[1],
     [fandom, setFandom] = useState<{
@@ -456,23 +460,12 @@ export function CatalogueFandom() {
     return <CatalogueBrowser initialQid={qid ? "Q" + qid : undefined} />;
   if (!fandom) return <p className="live-empty">Opening fandom…</p>;
   return (
-    <>
-      <div className="community-header">
-        <h1>{fandom.name}</h1>
-        <p>{fandom.description}</p>
-        <a
-          href={"https://www.wikidata.org/wiki/" + fandom.wikidata_id}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Catalogue identity: {fandom.wikidata_id}
-        </a>
-      </div>
-      <SharedFeed
-        profile={profile}
-        fixedFandom={fandom.id}
-        fixedName={fandom.name}
-      />
-    </>
+    <FandomShell community={fandom} tab={tab} shared onTab={id => navigate(location.pathname + (id === "discussions" ? "" : "?section="+id))}>
+      {tab === "discussions" && <SharedFeed profile={profile} fixedFandom={fandom.id} fixedName={fandom.name} />}
+      {tab === "events" && <FandomEvents key={fandom.id} id={fandom.id} name={fandom.name} />}
+      {tab === "about" && <FandomAbout community={fandom} />}
+      {tab === "media" && <div className="fandom-quiet"><h2>A home for fan creations</h2><p>Shared media uploads are still being connected. Text conversations are available in Discussions.</p></div>}
+      <p className="fandom-footnote"><a href={"https://www.wikidata.org/wiki/" + fandom.wikidata_id} target="_blank" rel="noreferrer">Catalogue identity: {fandom.wikidata_id}</a></p>
+    </FandomShell>
   );
 }

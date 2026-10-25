@@ -133,3 +133,9 @@ See [the catalogue design and verification notes](docs/CATALOGUE.md). The existi
 ## Administration development preview
 
 Visitors without a staff session can explore `/admin` and its section URLs without email setup. The development preview uses explicitly labelled sample records and browser-local persistence. It never calls the admin APIs or reads or changes live database records. Sample moderation actions populate a local audit log. Authenticated accounts continue through the existing server-authorized administration flow; member accounts do not receive staff permissions. Public account registration still requires the documented email setup.
+
+## Fandom community pages
+
+Seed fandom URLs now use a reusable themed community layout with Discussions, Fan creations, Events and About sections encoded in the URL. Discussions support browser-local publishing in the selected fandom, search and latest/most-liked sorting. Fan creations filter visual posts. Event plans can be created and removed locally and persist per fandom. A contextual sidebar contains guidelines, verified-announcement empty states and related communities. Covers are original CSS artwork; no artist images, invented releases or live member counts are introduced. The same shell wraps connected catalogue fandoms, retaining their authorized shared discussion feed. Shared media remains explicitly unavailable. Event plans are browser-local even on connected pages.
+
+Verify with `npm run build`; visit `/fandoms/taylor-swift`, switch tabs, refresh, publish a local post and create an event plan. Check narrow mobile and desktop layouts.
