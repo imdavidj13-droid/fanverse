@@ -1,8 +1,14 @@
+import { defaultProfileStyle, type ProfileStyle } from "./profileTheme";
 import { initialPosts, type Post } from "./data";
+import { defaultPreferences, type Activity } from "./activity";
 export type Profile = { name: string; bio: string; avatar: string };
 export type Reply = { id: number; text: string };
 export type State = {
   version: 1;
+  profileStyle: ProfileStyle;
+  preferences: typeof defaultPreferences;
+  activity: Activity[];
+  homeHidden: string[];
   posts: Post[];
   joined: string[];
   following: string[];
@@ -20,6 +26,10 @@ export const storageKey = "fanverse.preview.v1";
 export function freshState(): State {
   return {
     version: 1,
+    profileStyle: { ...defaultProfileStyle },
+    preferences: { ...defaultPreferences },
+    activity: [],
+    homeHidden: [],
     posts: initialPosts,
     joined: ["taylor", "sabrina", "olivia"],
     following: ["swiftie.stories", "sabrinaspills"],
@@ -50,7 +60,14 @@ export function loadState(): State {
       !value.profile
     )
       return freshState();
-    return { ...freshState(), ...value };
+    return {
+      ...freshState(),
+      ...value,
+      profileStyle: { ...defaultProfileStyle, ...value.profileStyle },
+      preferences: { ...defaultPreferences, ...value.preferences },
+      activity: Array.isArray(value.activity) ? value.activity : [],
+      homeHidden: Array.isArray(value.homeHidden) ? value.homeHidden : [],
+    };
   } catch {
     return freshState();
   }
@@ -83,6 +100,12 @@ export function filterPosts(
   return state.posts.filter(
     (post) =>
       !state.blocked.includes(post.handle) &&
+      !state.preferences.mutedWords.some((word) =>
+        post.text.toLowerCase().includes(word.toLowerCase()),
+      ) &&
+      (page !== "Home" ||
+        Boolean(fandom) ||
+        !state.homeHidden.includes(post.fandom)) &&
       !state.muted.includes(post.handle) &&
       (!fandom || post.fandom === fandom) &&
       (page !== "Bookmarks" || state.saved.includes(post.id)) &&

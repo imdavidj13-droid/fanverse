@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Headphones,
   ArrowLeft,
+  Settings,
 } from "lucide-react";
 import { fandoms, type Post } from "./data";
 import {
@@ -33,6 +34,9 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePanel } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { AppLink as Link } from "./Navigation";
+import { LocalPages } from "./LocalPages";
+import { recordActivity } from "./activity";
 import "./styles.css";
 const nav = [
   { name: "Home", icon: Home },
@@ -44,34 +48,8 @@ const nav = [
   { name: "Profile", icon: User },
   { name: "Community", icon: Users },
   { name: "Account", icon: User },
+  { name: "Settings", icon: Settings },
 ];
-function Link({
-  href,
-  children,
-  ...props
-}: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
-  return (
-    <a
-      {...props}
-      href={href}
-      onClick={(e) => {
-        if (
-          !e.defaultPrevented &&
-          e.button === 0 &&
-          !e.metaKey &&
-          !e.ctrlKey &&
-          !e.shiftKey &&
-          !e.altKey
-        ) {
-          e.preventDefault();
-          navigate(href);
-        }
-      }}
-    >
-      {children}
-    </a>
-  );
-}
 function App() {
   const route = useRoute(),
     page = route.page,
@@ -84,7 +62,8 @@ function App() {
     [notice, setNotice] = useState(""),
     [saveError, setSaveError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
-  const update = (fn: (s: State) => State) => setState(fn);
+  const update = (fn: (s: State) => State) =>
+    setState((before) => recordActivity(before, fn(before)));
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
@@ -102,6 +81,22 @@ function App() {
     if (compose) dialog.current?.showModal();
     else dialog.current?.close();
   }, [compose]);
+  useEffect(() => {
+    document.documentElement.dataset.density = state.preferences.compact
+      ? "compact"
+      : "comfortable";
+    document.documentElement.dataset.text = state.preferences.largeText
+      ? "large"
+      : "normal";
+  }, [state.preferences.compact, state.preferences.largeText]);
+  const searchHref = (value: string) => {
+    const params = new URLSearchParams(
+      page === "Explore" ? location.search : "",
+    );
+    if (value) params.set("q", value);
+    else params.delete("q");
+    return "/explore" + (params.size ? "?" + params : "");
+  };
   const membership = (id: string) =>
     update((s) => ({ ...s, joined: toggleValue(s.joined, id) }));
   const publish = (post: Post) => {
@@ -113,6 +108,12 @@ function App() {
     );
   };
   const visible = filterPosts(state, { page, tab, fandom: active, query });
+  if (page === "Profile" && state.profileStyle.pinnedPostId)
+    visible.sort(
+      (a, b) =>
+        Number(b.id === state.profileStyle.pinnedPostId) -
+        Number(a.id === state.profileStyle.pinnedPostId),
+    );
   const community = fandoms.find((f) => f.id === active);
   return (
     <>
@@ -216,13 +217,10 @@ function App() {
                 placeholder="Search fandoms, people, conversations…"
                 value={query}
                 onChange={(e) =>
-                  navigate(
-                    "/explore" +
-                      (e.target.value
-                        ? "?q=" + encodeURIComponent(e.target.value)
-                        : ""),
-                    { replace: page === "Explore", scroll: false },
-                  )
+                  navigate(searchHref(e.target.value), {
+                    replace: page === "Explore",
+                    scroll: false,
+                  })
                 }
               />
             </label>
@@ -232,6 +230,11 @@ function App() {
               href="/notifications"
             >
               <Bell size={21} />
+              {state.activity.some((a) => !a.read) && (
+                <span className="bell-unread" aria-hidden="true">
+                  {state.activity.filter((a) => !a.read).length}
+                </span>
+              )}
             </Link>
             <Link
               className="profile-button"
@@ -285,6 +288,20 @@ function App() {
                 <>
                   {["Account", "Community", "Admin"].includes(page) ? (
                     <LiveArea page={page} />
+                  ) : [
+                      "Explore",
+                      "Post",
+                      "Fan",
+                      "Settings",
+                      "Notifications",
+                      "Profile studio",
+                    ].includes(page) ? (
+                    <LocalPages
+                      key={page === "Fan" ? location.pathname : page}
+                      state={state}
+                      update={update}
+                      onNotice={setNotice}
+                    />
                   ) : (
                     <>
                       {community ? (
@@ -506,6 +523,7 @@ function App() {
                                 )}
                                 <Composer
                                   key={active || "home"}
+                                  context={active || "home"}
                                   profile={state.profile}
                                   onPublish={publish}
                                   onNotice={setNotice}
@@ -688,7 +706,7 @@ function App() {
             </Link>
           ))}
       </nav>
-      {page !== "Admin" && (
+      {!["Admin", "Settings", "Profile studio"].includes(page) && (
         <button
           className="floating-post primary"
           aria-label="Create a post"
@@ -725,6 +743,7 @@ function App() {
             profile={state.profile}
             onPublish={publish}
             onNotice={setNotice}
+            context="modal"
             initialFandom={active || state.joined[0] || "taylor"}
           />
         )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar, readImage } from "./Composer";
 import type { State } from "./model";
+import { ProfileHeader } from "./ProfileStudio";
 export function ProfilePanel({
   state,
   update,
@@ -15,15 +16,7 @@ export function ProfilePanel({
     [loading, setLoading] = useState(false);
   return (
     <>
-      <section className="profile-card">
-        <Avatar profile={state.profile} />
-        <h2>{state.profile.name}</h2>
-        <p>@david · Local preview profile</p>
-        <p className="profile-bio">{state.profile.bio}</p>
-        <div>
-          {state.joined.length} fandoms · {state.following.length} following ·{" "}
-          {state.posts.filter((p) => p.own).length} posts
-        </div>
+      <ProfileHeader state={state}>
         <button
           className="secondary"
           onClick={() => {
@@ -33,6 +26,12 @@ export function ProfilePanel({
         >
           Edit profile
         </button>
+        <a className="secondary profile-settings-link" href="/settings">
+          Preferences & display
+        </a>
+        <a className="secondary profile-settings-link" href="/profile/edit">
+          Customise your profile
+        </a>
         {editing && (
           <form
             className="profile-edit"
@@ -120,7 +119,7 @@ export function ProfilePanel({
             </div>
           </form>
         )}
-      </section>
+      </ProfileHeader>
       <details className="preferences">
         <summary>Preferences & hidden accounts</summary>
         <p>These settings affect this browser only.</p>

@@ -1,0 +1,307 @@
+.custom-profile {
+  --profile-accent: #7745d9;
+  --profile-background: #f7f1ff;
+  --profile-surface: white;
+  --profile-text: #32233f;
+  --profile-muted: #806c93;
+  --profile-cover: linear-gradient(120deg, #e8d3ff, #ccb3ee);
+  --profile-radius: 18px;
+  --profile-font: system-ui;
+  background: var(--profile-background);
+  color: var(--profile-text);
+  border-radius: var(--profile-radius);
+  font-family: var(--profile-font), sans-serif;
+  border: 1px solid #9373b533;
+  overflow: hidden;
+  margin: 15px 0 20px;
+}
+.profile-cover {
+  height: 130px;
+  background: var(--profile-cover);
+  position: relative;
+  overflow: hidden;
+}
+.profile-cover > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-cover.pattern-dots:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#ffffff80 2px, transparent 2px);
+  background-size: 18px 18px;
+}
+.profile-cover.pattern-stars:after {
+  content: "✦  ·  ✧   ✦  ·  ✧   ✦";
+  position: absolute;
+  inset: 18px 0;
+  color: #ffffff90;
+  font-size: 43px;
+  letter-spacing: 12px;
+  line-height: 1.7;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.profile-body {
+  padding: 0 22px 23px;
+  position: relative;
+}
+.profile-body > .avatar {
+  width: 66px;
+  height: 66px;
+  font-size: 24px;
+  border: 4px solid var(--profile-background);
+  position: relative;
+  margin-top: -33px;
+}
+.profile-body > h2 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  margin: 12px 0 5px;
+}
+.profile-body .profile-handle {
+  color: var(--profile-muted);
+  font-size: 11px;
+}
+.profile-body .profile-tagline {
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.profile-body .profile-bio {
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.profile-stats {
+  font-size: 11px;
+  color: var(--profile-muted);
+  margin: 16px 0;
+}
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 15px 0;
+}
+.profile-badges a {
+  background: var(--profile-surface);
+  color: var(--profile-accent);
+  padding: 7px 10px;
+  border-radius: 14px;
+  font-size: 10px;
+}
+.profile-favourites {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.profile-favourites > div {
+  background: var(--profile-surface);
+  border-radius: 10px;
+  padding: 13px;
+  display: grid;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.profile-favourites small {
+  color: var(--profile-muted);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.profile-favourites strong {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 600;
+}
+.profile-body blockquote {
+  border-left: 3px solid var(--profile-accent);
+  margin: 20px 0;
+  padding: 10px 15px;
+  background: var(--profile-surface);
+  color: var(--profile-text);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.profile-pin {
+  display: block;
+  background: var(--profile-surface);
+  color: var(--profile-accent);
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 15px 0;
+  overflow-wrap: anywhere;
+}
+.profile-body > .secondary {
+  border-color: var(--profile-accent);
+  color: var(--profile-accent);
+  margin-top: 10px;
+  font-family: system-ui;
+}
+.profile-layout-spotlight .profile-body {
+  text-align: center;
+}
+.profile-layout-spotlight .profile-body > .avatar {
+  margin-left: auto;
+  margin-right: auto;
+}
+.profile-layout-spotlight .profile-badges {
+  justify-content: center;
+}
+.profile-studio {
+  display: grid;
+  gap: 22px;
+}
+.studio-toolbar {
+  display: flex;
+  gap: 8px;
+  margin: 15px 0 22px;
+}
+.studio-toolbar .primary {
+  font-size: 12px;
+}
+.studio-preview {
+  min-width: 0;
+}
+.preview-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.studio-preview .custom-profile {
+  margin-top: 0;
+}
+.theme-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.theme-presets button {
+  border: 1px solid var(--border);
+  padding: 0 0 9px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  text-align: left;
+}
+.theme-presets span {
+  display: block;
+  height: 40px;
+  margin-bottom: 8px;
+}
+.theme-presets strong {
+  font-size: 9px;
+  padding: 0 7px;
+}
+.theme-colour {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 9px 0;
+}
+.theme-colour input {
+  width: 38px;
+  height: 28px;
+  cursor: pointer;
+  border: 0;
+  background: none;
+}
+.studio-field {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  margin: 15px 0;
+}
+.studio-field select,
+.studio-controls select {
+  padding: 9px;
+  border: 1px solid #e6ddef;
+  border-radius: 6px;
+  color: inherit;
+  background: white;
+  max-width: 100%;
+  font-size: 12px;
+}
+.studio-controls .css-editor {
+  min-height: 300px;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre;
+  tab-size: 2;
+}
+.studio-controls .settings-card p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.studio-controls {
+  min-width: 0;
+}
+.explore-tabs > button {
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 7px;
+  color: var(--purple);
+}
+@media (min-width: 1200px) {
+  .profile-studio {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .studio-preview {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+  }
+  .studio-controls .theme-presets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .profile-cover {
+    height: 120px;
+  }
+  .profile-body {
+    padding: 0 16px 20px;
+  }
+  .profile-body > h2 {
+    font-size: 22px;
+  }
+  .profile-favourites {
+    gap: 8px;
+  }
+  .profile-favourites > div {
+    padding: 11px;
+  }
+  .profile-favourites strong {
+    font-size: 11px;
+  }
+  .profile-studio {
+    display: flex;
+    flex-direction: column;
+  }
+  .studio-preview {
+    order: -1;
+  }
+  .studio-preview .profile-cover {
+    height: 100px;
+  }
+  .theme-presets {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .profile-body > .secondary {
+    margin-right: 7px;
+  }
+  .studio-controls .css-editor {
+    font-size: 11px;
+  }
+}

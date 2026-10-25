@@ -1,7 +1,8 @@
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import { ImagePlus, BarChart3, X, EyeOff } from "lucide-react";
 import { fandoms, type Post } from "./data";
 import type { Profile } from "./model";
+import { readDraft, draftKey } from "./drafts";
 export function Avatar({ profile }: { profile: Profile }) {
   return (
     <span className="avatar me">
@@ -18,21 +19,64 @@ export function Composer({
   onPublish,
   onNotice,
   initialFandom = "taylor",
+  context = "home",
 }: {
   profile: Profile;
   onPublish: (post: Post) => void;
   onNotice: (message: string) => void;
   initialFandom?: string;
+  context?: string;
 }) {
-  const [text, setText] = useState(""),
-    [fandom, setFandom] = useState(initialFandom),
+  const [recovered] = useState(() => readDraft(context, initialFandom));
+  const [restored, setRestored] = useState(Boolean(recovered)),
+    [draftSaved, setDraftSaved] = useState(false);
+  const [text, setText] = useState(recovered?.text || ""),
+    [fandom, setFandom] = useState(recovered?.fandom || initialFandom),
     [image, setImage] = useState(""),
-    [alt, setAlt] = useState(""),
-    [poll, setPoll] = useState<string[] | null>(null),
-    [spoiler, setSpoiler] = useState(false),
+    [alt, setAlt] = useState(recovered?.alt || ""),
+    [poll, setPoll] = useState<string[] | null>(recovered?.poll || null),
+    [spoiler, setSpoiler] = useState(recovered?.spoiler || false),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
   const imageId = useId();
+  useEffect(() => {
+    try {
+      if (text || poll || image) {
+        localStorage.setItem(
+          draftKey(context),
+          JSON.stringify({
+            text,
+            fandom,
+            alt,
+            poll,
+            spoiler,
+            hadImage: Boolean(image),
+          }),
+        );
+        setDraftSaved(true);
+      } else {
+        localStorage.removeItem(draftKey(context));
+        setDraftSaved(false);
+      }
+    } catch {
+      setDraftSaved(false);
+      setError(
+        "This draft could not be saved. Keep the composer open until you publish or copy the text.",
+      );
+    }
+  }, [text, fandom, alt, poll, spoiler, image, context]);
+  const discard = () => {
+    setText("");
+    setImage("");
+    setAlt("");
+    setPoll(null);
+    setSpoiler(false);
+    setRestored(false);
+    try {
+      localStorage.removeItem(draftKey(context));
+    } catch {}
+  };
+
   const reportError = (message: string) => {
     setError(message);
     onNotice(message);
@@ -44,6 +88,10 @@ export function Composer({
         new Set(poll.map((o) => o.trim().toLowerCase())).size === poll.length));
   const publish = () => {
     if (!valid || loading) return;
+    try {
+      localStorage.removeItem(draftKey(context));
+    } catch {}
+    setRestored(false);
     onPublish({
       id: Date.now(),
       author: profile.name,
@@ -69,6 +117,13 @@ export function Composer({
   };
   return (
     <div className={"composer " + (text.length ? "has-draft" : "")}>
+      {restored && (
+        <div className="draft-banner" role="status">
+          Draft restored
+          {recovered?.hadImage ? " · Please attach your photo again" : ""}
+          <button onClick={discard}>Discard</button>
+        </div>
+      )}
       <div className="compose-row">
         <Avatar profile={profile} />
         <textarea
@@ -212,12 +267,18 @@ export function Composer({
           {loading ? "Reading…" : "Post"}
         </button>
       </div>
+      {draftSaved && !restored && (
+        <button className="discard-draft" onClick={discard}>
+          Discard draft
+        </button>
+      )}
       {error && (
         <p className="composer-error" role="alert">
           {error}
         </p>
       )}
       <small>
+        {draftSaved ? "Draft saved · " : ""}
         {text.length}/500 · {spoiler ? "Spoiler warning on · " : ""}Saved on
         this browser only
       </small>

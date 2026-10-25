@@ -97,3 +97,27 @@ Browser checks against the built frontend and local Worker covered actual sign-i
 Artist imagery remains placeholder artwork. Sample counts, people and events are labelled. The concert moodboard is a stock crowd photo, not a named artist/event photo. Source: https://images.unsplash.com/photo-1459749411175-04bf5292ceea .
 
 See AGENTS.md for development guidelines.
+
+## Customisable profiles and database-free additions
+
+Open **Profile → Customise your profile**, or `/profile/edit`, for the local profile studio:
+
+- Six starter themes, five colour controls and three font families.
+- Gradient covers, optional cover photos (under 250 KB), dot/star patterns and adjustable corner rounding.
+- Classic and centred spotlight layouts.
+- Tagline, favourite song/album, quote, fandom badges, optional statistics and an own-post pin.
+- A live preview and a Theme CSS editor. Supported variables are validated and applied only to the profile card. Arbitrary selectors, scripts, imports, URLs and unsupported properties are rejected. The site itself retains its white theme.
+
+Theme settings are saved in the existing browser-local preview state, with defaults merged for older saved profiles. They are not uploaded to shared accounts yet.
+
+Other additions:
+
+- `/posts/:id` opens a local conversation directly, including replies. Personal preview links only work where the post exists; copying a link does not upload it.
+- `/fans/:handle` opens a sample fan profile; profile names in posts are links.
+- Explore has Posts, People, Fandoms and Media categories, searchable through URLs such as `/explore?view=people&q=liv`.
+- Photos open in a keyboard-accessible native dialog and close with Escape.
+- Separate inline/fandom/modal composer drafts restore text, poll choices, fandom and spoiler settings across refresh. Photo files must be selected again; they are intentionally not duplicated in draft storage.
+- `/settings` provides compact reading, larger post text, spoiler defaults, Home fandom visibility and muted words. Filters affect the local preview; display choices are stored on the current browser.
+- `/notifications` now shows **your own local activity**, with unread counts, read controls and a preference to stop recording it. It does not simulate other people sending notifications, email or push delivery.
+
+Browser verification covered draft isolation/recovery, post/profile URLs, replies, photo viewing, people search, theme persistence and CSS restrictions, profile layouts/details/pinning, Home visibility, muted words and local read status. Profile, editor, settings, media search and activity pages were checked at five viewport widths from 320 to 1440 pixels.

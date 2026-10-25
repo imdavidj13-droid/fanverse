@@ -6,25 +6,30 @@ import {
   Bookmark,
   MoreHorizontal,
   EyeOff,
+  Share2,
 } from "lucide-react";
 import { fandoms, type Post } from "./data";
 import { pollResults, type State } from "./model";
 import { Avatar } from "./Composer";
+import { AppLink } from "./Navigation";
+import { MediaViewer } from "./MediaViewer";
 export function PostCard({
   post: p,
   state,
   update,
   onCommunity,
   onNotice,
+  detail = false,
 }: {
   post: Post;
   state: State;
   update: (fn: (s: State) => State) => void;
   onCommunity: () => void;
   onNotice: (s: string) => void;
+  detail?: boolean;
 }) {
   const [menu, setMenu] = useState(false),
-    [replyOpen, setReplyOpen] = useState(false),
+    [replyOpen, setReplyOpen] = useState(detail),
     [reply, setReply] = useState(""),
     [revealed, setRevealed] = useState(false),
     [report, setReport] = useState(false),
@@ -47,7 +52,13 @@ export function PostCard({
         : [...s[key], p.id],
     }));
   const moderate = (key: "blocked" | "muted") => {
-    update((s) => ({ ...s, [key]: [...s[key], p.handle] }));
+    update((s) => ({
+      ...s,
+      [key]: [...s[key], p.handle],
+      ...(key === "blocked"
+        ? { following: s.following.filter((handle) => handle !== p.handle) }
+        : {}),
+    }));
     onNotice(
       `${key === "blocked" ? "Blocked" : "Muted"} @${p.handle}. Manage this in Profile → Preferences.`,
     );
@@ -69,7 +80,12 @@ export function PostCard({
           </span>
         )}
         <div>
-          <strong>{p.own ? state.profile.name : p.author}</strong>
+          <AppLink
+            className="author-link"
+            href={p.own ? "/profile" : "/fans/" + p.handle}
+          >
+            <strong>{p.own ? state.profile.name : p.author}</strong>
+          </AppLink>
           <span className="handle">
             {" "}
             @{p.handle} · {p.own ? "You" : "Demo"}
@@ -87,6 +103,10 @@ export function PostCard({
           <MoreHorizontal size={19} />
         </button>
       </div>
+      <AppLink className="post-permalink" href={"/posts/" + p.id}>
+        {p.createdAt ? new Date(p.createdAt).toLocaleString() : "Sample post"} ·
+        View conversation
+      </AppLink>
       {menu && (
         <div className="post-menu">
           {p.own ? (
@@ -225,7 +245,7 @@ export function PostCard({
           </div>
         </form>
       )}
-      {p.spoiler && !revealed ? (
+      {p.spoiler && state.preferences.hideSpoilers && !revealed ? (
         <button className="spoiler-cover" onClick={() => setRevealed(true)}>
           <EyeOff size={23} />
           <strong>Spoiler warning</strong>
@@ -271,11 +291,10 @@ export function PostCard({
           )}
           {p.art && (
             <figure className="concert-photo">
-              <img
+              <MediaViewer
                 src="/media/concert.jpg"
                 alt="A concert crowd beneath warm stage lights"
-                width="1200"
-                height="800"
+                caption="Concert moodboard · Stock photo, not an artist event"
               />
               <figcaption>
                 Concert moodboard · Stock photo, not an artist event
@@ -283,11 +302,15 @@ export function PostCard({
             </figure>
           )}
           {p.image && (
-            <img
-              className="post-image"
-              src={p.image}
-              alt={p.imageAlt || "Photo shared by " + state.profile.name}
-            />
+            <div className="uploaded-media">
+              <MediaViewer
+                src={p.image}
+                alt={
+                  p.imageAlt ||
+                  "Photo shared by " + (p.own ? state.profile.name : p.author)
+                }
+              />
+            </div>
           )}{" "}
           {p.poll && (
             <div className="poll">
@@ -357,6 +380,22 @@ export function PostCard({
           onClick={() => toggle("saved")}
         >
           <Bookmark size={18} fill={saved ? "currentColor" : "none"} />
+        </button>
+        <button
+          aria-label="Copy preview post link"
+          onClick={async () => {
+            const url = location.origin + "/posts/" + p.id;
+            try {
+              await navigator.clipboard.writeText(url);
+              onNotice(
+                "Preview link copied. Personal preview posts are only available in the browser where they were created.",
+              );
+            } catch {
+              onNotice("Copy this preview link: " + url);
+            }
+          }}
+        >
+          <Share2 size={17} />
         </button>
       </div>
       {replyOpen && (
