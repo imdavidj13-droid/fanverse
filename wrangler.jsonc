@@ -9,4 +9,12 @@
   },
   "main": "worker/index.ts",
   "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fanverse-db",
+      "database_id": "866d8735-177c-4b53-adf9-a256a94c0133",
+      "migrations_dir": "migrations"
+    }
+  ],
 }
