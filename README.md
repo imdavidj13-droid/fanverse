@@ -129,3 +129,7 @@ Open **Catalogue**, or `/catalogue`, to search for artists, TV series and films 
 The backend now includes canonical subject IDs, duplicate-safe activation, a review queue, archival and merge controls. These wait for the dedicated D1 connection. Migration `0003_catalogue.sql` preserves existing content while allowing fandoms beyond the initial four examples.
 
 See [the catalogue design and verification notes](docs/CATALOGUE.md). The existing setup guide still applies: run all committed D1 migrations when creating the database. No production database was connected or written during this work.
+
+## Administration development preview
+
+Visitors without a staff session can explore `/admin` and its section URLs without email setup. The development preview uses explicitly labelled sample records and browser-local persistence. It never calls the admin APIs or reads or changes live database records. Sample moderation actions populate a local audit log. Authenticated accounts continue through the existing server-authorized administration flow; member accounts do not receive staff permissions. Public account registration still requires the documented email setup.

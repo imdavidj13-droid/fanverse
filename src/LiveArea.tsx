@@ -3,6 +3,7 @@ import { api, type LiveProfile, type Page } from "./api";
 import { fandoms } from "./data";
 import { navigate, useRoute } from "./routes";
 import { AdminPanel } from "./admin/AdminPanel";
+import { AdminPreview } from "./admin/AdminPreview";
 interface SharedPost {
   id: number;
   user_id: string;
@@ -57,6 +58,7 @@ export function LiveArea({ page }: { page: string }) {
       setBusy(false);
     }
   }
+  if (page === "Admin" && (!ready || !profile)) return <AdminPreview key={location.pathname} />;
   return (
     <section className="live-area">
       <div className="live-title">
