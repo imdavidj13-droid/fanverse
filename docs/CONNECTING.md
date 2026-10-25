@@ -81,3 +81,9 @@ npm test
 ```
 
 This builds the frontend and Worker and runs integration tests against a disposable local D1 instance using Miniflare. No production database is contacted. Test-only secrets and development settings are confined to local fixtures.
+
+## Catalogue activation
+
+The migration set now includes `0003_catalogue.sql`, which upgrades the application schema to version 2 and replaces the initial four-fandom restriction with a canonical directory. Apply all pending migrations with the documented Wrangler command before testing shared accounts.
+
+You can search `/catalogue` and stage records before configuring any database. After connection and sign-in, revisit those records to activate and join their fandoms. Review and directory controls are at `/admin/fandom-requests` and `/admin/fandoms`. No Wikidata API key is needed for the read-only integration. Do not add the fixture-only `CATALOGUE_SOURCE` service binding to production.

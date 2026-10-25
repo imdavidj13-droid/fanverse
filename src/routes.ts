@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 export const pagePaths: Record<string, string> = {
   Home: "/",
   Explore: "/explore",
+  Catalogue: "/catalogue",
   "My fandoms": "/fandoms",
   Notifications: "/notifications",
   Messages: "/messages",
@@ -22,11 +23,15 @@ const fandomSlugs: Record<string, string> = {
 export const fandomPath = (id: string) => "/fandoms/" + (fandomSlugs[id] || id);
 export function parseRoute(path: string) {
   const clean = path.replace(/\/+$/, "") || "/";
+  if (/^\/fandoms\/[a-z0-9-]+-q[1-9]\d*$/.test(clean))
+    return { page: "Catalogue fandom", fandom: "", found: true };
   if (/^\/posts\/[1-9]\d*$/.test(clean))
     return { page: "Post", fandom: "", found: true };
   if (/^\/fans\/[a-zA-Z0-9_.-]{1,40}$/.test(clean))
     return { page: "Fan", fandom: "", found: true };
-  if (/^\/admin\/(users|posts|reports|audit)$/.test(clean))
+  if (
+    /^\/admin\/(users|posts|reports|audit|fandoms|fandom-requests)$/.test(clean)
+  )
     return { page: "Admin", fandom: "", found: true };
   const fandom = Object.keys(fandomSlugs).find(
     (id) => fandomPath(id) === clean,

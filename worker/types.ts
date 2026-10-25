@@ -1,5 +1,6 @@
 export interface Env {
   DB?: D1Database;
+  CATALOGUE_SOURCE?: Fetcher;
   ASSETS: Fetcher;
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;

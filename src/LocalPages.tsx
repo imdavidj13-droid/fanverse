@@ -5,6 +5,7 @@ import { useRoute, fandomPath, navigate } from "./routes";
 import { AppLink } from "./Navigation";
 import { PostCard } from "./PostCard";
 import { ProfileStudio } from "./ProfileStudio";
+import { CatalogueBrowser, CatalogueFandom } from "./CatalogueBrowser";
 type Props = {
   state: State;
   update: (fn: (s: State) => State) => void;
@@ -99,6 +100,8 @@ export function LocalPages({ state, update, onNotice }: Props) {
     fandom: "",
     query: "",
   });
+  if (route.page === "Catalogue") return <CatalogueBrowser />;
+  if (route.page === "Catalogue fandom") return <CatalogueFandom />;
   if (route.page === "Profile studio")
     return <ProfileStudio state={state} update={update} onNotice={onNotice} />;
   if (route.page === "Post") {
@@ -399,6 +402,9 @@ export function LocalPages({ state, update, onNotice }: Props) {
     <>
       <div className="local-page-title">
         <h1>Explore</h1>
+        <AppLink className="secondary" href="/catalogue">
+          Find an artist, show or film
+        </AppLink>
         <p>Find conversations, fans and your next favourite fandom.</p>
       </div>
       <nav className="explore-tabs" aria-label="Explore categories">

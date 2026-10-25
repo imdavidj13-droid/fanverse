@@ -64,7 +64,7 @@ export function checkOrigin(request: Request, env: Env) {
 export async function visiblePost(env: Env, id: number, viewer: string | null) {
   const row = await env
     .DB!.prepare(
-      `SELECT p.* FROM posts p JOIN profiles a ON a.user_id=p.user_id WHERE p.id=? AND p.status='published' AND a.status='active' AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.user_id=? AND b.blocked_id=p.user_id) OR (b.user_id=p.user_id AND b.blocked_id=?))`,
+      `SELECT p.* FROM posts p JOIN profiles a ON a.user_id=p.user_id JOIN fandoms directory ON directory.id=p.fandom_id AND directory.status='active' WHERE p.id=? AND p.status='published' AND a.status='active' AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.user_id=? AND b.blocked_id=p.user_id) OR (b.user_id=p.user_id AND b.blocked_id=?))`,
     )
     .bind(id, viewer, viewer)
     .first<{ id: number; user_id: string }>();

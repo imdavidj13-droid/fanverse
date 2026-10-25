@@ -2,7 +2,14 @@ import { createAuth } from "./auth";
 import { admin } from "./admin";
 import { body, HttpError, json, limit, pageCursor, text } from "./http";
 import { checkOrigin, identity, throttle, visiblePost } from "./security";
-import { configured, fandomIds, type Env } from "./types";
+import { configured, type Env } from "./types";
+import {
+  cataloguePublic,
+  catalogueMember,
+  catalogueAdmin,
+  resolveFandom,
+} from "./catalogue";
+const catalogueLimits = new Map<string, { minute: number; count: number }>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url),
@@ -12,6 +19,24 @@ export default {
         ? env.ASSETS.fetch(request)
         : new Response("Not found", { status: 404 });
     try {
+      if (path.startsWith("/api/catalogue/")) {
+        const key = request.headers.get("cf-connecting-ip") || "local",
+          minute = Math.floor(Date.now() / 60000),
+          old = catalogueLimits.get(key),
+          value =
+            old?.minute === minute
+              ? { minute, count: old.count + 1 }
+              : { minute, count: 1 };
+        if (catalogueLimits.size > 1000)
+          catalogueLimits.delete(catalogueLimits.keys().next().value!);
+        catalogueLimits.set(key, value);
+        if (value.count > 15)
+          throw new HttpError(
+            429,
+            "Please wait a minute before searching again.",
+          );
+        return await cataloguePublic(request, env);
+      }
       if (path === "/api/status") {
         let ready =
           configured(env) &&
@@ -20,7 +45,7 @@ export default {
           try {
             ready = Boolean(
               await env
-                .DB!.prepare("SELECT version FROM app_meta WHERE version=1")
+                .DB!.prepare("SELECT version FROM app_meta WHERE version>=2")
                 .first(),
             );
           } catch {
@@ -36,6 +61,21 @@ export default {
         throw new HttpError(
           503,
           "Shared accounts are not connected yet. The local preview is still available.",
+        );
+      let schemaReady = false;
+      try {
+        schemaReady = Boolean(
+          await env
+            .DB!.prepare("SELECT version FROM app_meta WHERE version>=2")
+            .first(),
+        );
+      } catch {
+        /* Account writes stay disabled until the migration is complete. */
+      }
+      if (!schemaReady)
+        throw new HttpError(
+          503,
+          "The community database setup is not complete yet.",
         );
       checkOrigin(request, env);
       if (path.startsWith("/api/auth/")) {
@@ -76,10 +116,11 @@ export default {
       if (path === "/api/posts" && request.method === "GET") {
         const n = limit(url),
           before = pageCursor(url),
-          fandom = url.searchParams.get("fandom"),
+          fandomInput = url.searchParams.get("fandom"),
           feed = url.searchParams.get("feed") || "latest";
-        if (fandom && !fandomIds.includes(fandom))
-          throw new HttpError(400, "Unknown fandom.");
+        const fandom = fandomInput
+          ? (await resolveFandom(db, fandomInput)).id
+          : null;
         if (!["latest", "following", "fandoms", "bookmarks"].includes(feed))
           throw new HttpError(400, "Unknown feed.");
         if (feed !== "latest" && !person)
@@ -91,7 +132,7 @@ export default {
     EXISTS(SELECT 1 FROM follows f WHERE f.user_id=? AND f.following_id=p.user_id) following,
     EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked,
     EXISTS(SELECT 1 FROM post_bookmarks b WHERE b.post_id=p.id AND b.user_id=?) bookmarked
-    FROM posts p JOIN profiles a ON a.user_id=p.user_id WHERE p.status='published' AND a.status='active' AND p.id<? AND (? IS NULL OR p.fandom_id=?)
+    FROM posts p JOIN profiles a ON a.user_id=p.user_id JOIN fandoms directory ON directory.id=p.fandom_id AND directory.status='active' WHERE p.status='published' AND a.status='active' AND p.id<? AND (? IS NULL OR p.fandom_id=?)
     AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.user_id=? AND b.blocked_id=p.user_id) OR (b.user_id=p.user_id AND b.blocked_id=?))
     AND (?!='following' OR p.user_id=? OR EXISTS(SELECT 1 FROM follows f WHERE f.user_id=? AND f.following_id=p.user_id))
     AND (?!='fandoms' OR EXISTS(SELECT 1 FROM fandom_memberships m WHERE m.user_id=? AND m.fandom_id=p.fandom_id))
@@ -122,6 +163,27 @@ export default {
           next: rows.results.length > n ? rows.results[n - 1].id : null,
         });
       }
+      if (path === "/api/fandoms" && request.method === "GET") {
+        const n = limit(url),
+          after = url.searchParams.get("after") || "";
+        const rows = await db
+          .prepare(
+            "SELECT id,slug,name,description,kind,wikidata_id FROM fandoms WHERE status='active' AND id>? ORDER BY id LIMIT ?",
+          )
+          .bind(after, n + 1)
+          .all();
+        return json({
+          items: rows.results.slice(0, n),
+          next: rows.results.length > n ? rows.results[n - 1].id : null,
+        });
+      }
+      if (/^\/api\/fandoms\/[^/]+$/.test(path) && request.method === "GET")
+        return json({
+          fandom: await resolveFandom(
+            db,
+            decodeURIComponent(path.split("/").pop()!),
+          ),
+        });
       if (path === "/api/people" && request.method === "GET") {
         const n = limit(url),
           q = (url.searchParams.get("q") || "")
@@ -159,6 +221,13 @@ export default {
       if (!person) throw new HttpError(401, "Please sign in.");
       if (!["GET", "HEAD"].includes(request.method))
         await throttle(env, person);
+      if (
+        path.startsWith("/api/admin/fandoms") ||
+        path.startsWith("/api/admin/fandom-requests")
+      )
+        return await catalogueAdmin(request, env, person);
+      if (path === "/api/fandoms/activate")
+        return await catalogueMember(request, env, person);
       if (path.startsWith("/api/admin/"))
         return await admin(request, env, person);
       if (path === "/api/me" && request.method === "PATCH") {
@@ -195,9 +264,8 @@ export default {
       if (path === "/api/posts" && request.method === "POST") {
         const value = await body(request),
           content = text(value.text, "Post", 500),
-          fandom = text(value.fandom, "Fandom", 20);
-        if (!fandomIds.includes(fandom))
-          throw new HttpError(400, "Unknown fandom.");
+          fandom = (await resolveFandom(db, text(value.fandom, "Fandom", 100)))
+            .id;
         const result = await db
           .prepare(
             "INSERT INTO posts(user_id,fandom_id,text) VALUES(?,?,?) RETURNING id",
@@ -206,17 +274,19 @@ export default {
           .first();
         return json(result, 201);
       }
-      const membership = path.match(/^\/api\/memberships\/([a-z]+)$/);
+      const membership = path.match(/^\/api\/memberships\/([a-zA-Z0-9_-]+)$/);
       if (membership && ["PUT", "DELETE"].includes(request.method)) {
-        if (!fandomIds.includes(membership[1]))
-          throw new HttpError(400, "Unknown fandom.");
+        const memberFandom =
+          request.method === "PUT"
+            ? (await resolveFandom(db, membership[1])).id
+            : membership[1];
         await db
           .prepare(
             request.method === "PUT"
               ? "INSERT OR IGNORE INTO fandom_memberships(user_id,fandom_id) VALUES(?,?)"
               : "DELETE FROM fandom_memberships WHERE user_id=? AND fandom_id=?",
           )
-          .bind(viewer, membership[1])
+          .bind(viewer, memberFandom)
           .run();
         return json({ ok: true });
       }

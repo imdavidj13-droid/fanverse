@@ -434,9 +434,17 @@ function AccountProfile({
     </>
   );
 }
-function SharedFeed({ profile }: { profile: LiveProfile | null }) {
+export function SharedFeed({
+  profile,
+  fixedFandom,
+  fixedName,
+}: {
+  profile: LiveProfile | null;
+  fixedFandom?: string;
+  fixedName?: string;
+}) {
   const route = useRoute(),
-    fandom = route.sharedFandom,
+    fandom = fixedFandom || route.sharedFandom,
     feed = route.sharedFeed;
   const setFilter = (key: string, value: string) => {
     const params = new URLSearchParams(location.search);
@@ -481,6 +489,42 @@ function SharedFeed({ profile }: { profile: LiveProfile | null }) {
       cancelled = true;
     };
   }, [fandom, feed, refresh, profile?.user_id]);
+  const [directory, setDirectory] =
+    useState<{ id: string; name: string }[]>(fandoms);
+  useEffect(() => {
+    let cancelled = false;
+    api<Page<{ id: string; name: string }>>("/api/fandoms?limit=50")
+      .then((data) => {
+        if (!cancelled) setDirectory(data.items);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    if (fandom)
+      api<{ fandom: { id: string; name: string } }>(
+        "/api/fandoms/" + encodeURIComponent(fandom),
+      )
+        .then((data) => {
+          if (!cancelled)
+            setDirectory((rows) =>
+              rows.some((r) => r.id === data.fandom.id)
+                ? rows
+                : [...rows, data.fandom],
+            );
+        })
+        .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [fandom]);
+  const choices =
+    fixedFandom && !directory.some((f) => f.id === fixedFandom)
+      ? [...directory, { id: fixedFandom, name: fixedName || fixedFandom }]
+      : directory;
   const reload = () => setRefresh((n) => n + 1);
   return (
     <>
@@ -505,7 +549,7 @@ function SharedFeed({ profile }: { profile: LiveProfile | null }) {
           onChange={(e) => setFandom(e.target.value)}
         >
           <option value="">All fandoms</option>
-          {fandoms.map((f) => (
+          {choices.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
             </option>
@@ -517,7 +561,7 @@ function SharedFeed({ profile }: { profile: LiveProfile | null }) {
       </div>
       {profile && (
         <div className="membership-bar">
-          {fandoms.map((f) => (
+          {choices.map((f) => (
             <button
               key={f.id}
               className={
@@ -577,9 +621,10 @@ function SharedFeed({ profile }: { profile: LiveProfile | null }) {
             <select
               name="fandom"
               aria-label="Shared post fandom"
-              defaultValue="taylor"
+              key={fandom + choices.length}
+              defaultValue={fandom || choices[0]?.id || "taylor"}
             >
-              {fandoms.map((f) => (
+              {choices.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
                 </option>
@@ -614,6 +659,7 @@ function SharedFeed({ profile }: { profile: LiveProfile | null }) {
       )}
       {posts.map((post) => (
         <SharedPostCard
+          directory={choices}
           key={post.id}
           post={post}
           profile={profile}
@@ -653,7 +699,9 @@ function SharedPostCard({
   post,
   profile,
   reload,
+  directory,
 }: {
+  directory: { id: string; name: string }[];
   post: SharedPost;
   profile: LiveProfile | null;
   reload: () => void;
@@ -686,7 +734,8 @@ function SharedPostCard({
           <strong>{post.display_name}</strong>
           <span className="handle"> @{post.username}</span>
           <span className="fandom-tag">
-            {fandoms.find((f) => f.id === post.fandom_id)?.name}
+            {directory.find((f) => f.id === post.fandom_id)?.name ||
+              post.fandom_id}
           </span>
         </div>
       </div>

@@ -42,3 +42,7 @@ The administration area is a first operational foundation, not a claim to reprod
 9. **User data operations:** account deletion, export, retention policy and recovery workflows. These need deliberate product decisions before implementation.
 
 Private messages, live listening rooms, algorithm tuning and advertising tools are not implemented. Do not add administration pages that suggest those systems exist before their underlying features do.
+
+## Catalogue administration added
+
+The canonical directory now has `/admin/fandoms` and `/admin/fandom-requests`. Administrators can review unclear source subjects, archive/restore directory entries and merge genuine duplicate records while preserving posts, memberships, aliases and old routes. Moderators have read access. This foundation waits for the D1 connection; the public catalogue search and local setup list work independently. See [CATALOGUE.md](CATALOGUE.md) for the exact boundaries and migration.

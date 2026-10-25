@@ -42,6 +42,7 @@ const nav = [
   { name: "Home", icon: Home },
   { name: "Explore", icon: Compass },
   { name: "My fandoms", icon: Users },
+  { name: "Catalogue", icon: Compass },
   { name: "Notifications", icon: Bell },
   { name: "Messages", icon: Mail },
   { name: "Bookmarks", icon: Bookmark },
@@ -56,7 +57,12 @@ function App() {
     active = route.fandom,
     query = route.query,
     tab = route.tab;
-  const connectedArea = ["Account", "Community", "Admin"].includes(page);
+  const connectedArea = [
+    "Account",
+    "Community",
+    "Admin",
+    "Catalogue fandom",
+  ].includes(page);
   const [state, setState] = useState(loadState),
     [compose, setCompose] = useState(false),
     [notice, setNotice] = useState(""),
@@ -295,6 +301,8 @@ function App() {
                       "Settings",
                       "Notifications",
                       "Profile studio",
+                      "Catalogue",
+                      "Catalogue fandom",
                     ].includes(page) ? (
                     <LocalPages
                       key={page === "Fan" ? location.pathname : page}
@@ -706,7 +714,13 @@ function App() {
             </Link>
           ))}
       </nav>
-      {!["Admin", "Settings", "Profile studio"].includes(page) && (
+      {![
+        "Admin",
+        "Settings",
+        "Profile studio",
+        "Catalogue",
+        "Catalogue fandom",
+      ].includes(page) && (
         <button
           className="floating-post primary"
           aria-label="Create a post"

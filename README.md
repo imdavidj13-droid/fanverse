@@ -121,3 +121,11 @@ Other additions:
 - `/notifications` now shows **your own local activity**, with unread counts, read controls and a preference to stop recording it. It does not simulate other people sending notifications, email or push delivery.
 
 Browser verification covered draft isolation/recovery, post/profile URLs, replies, photo viewing, people search, theme persistence and CSS restrictions, profile layouts/details/pinning, Home visibility, muted words and local read status. Profile, editor, settings, media search and activity pages were checked at five viewport widths from 320 to 1440 pixels.
+
+## Catalogue foundation
+
+Open **Catalogue**, or `/catalogue`, to search for artists, TV series and films through Wikidata without connecting D1. You can inspect source identities and save records to a browser-local setup list. Saving a record does not create a public fandom.
+
+The backend now includes canonical subject IDs, duplicate-safe activation, a review queue, archival and merge controls. These wait for the dedicated D1 connection. Migration `0003_catalogue.sql` preserves existing content while allowing fandoms beyond the initial four examples.
+
+See [the catalogue design and verification notes](docs/CATALOGUE.md). The existing setup guide still applies: run all committed D1 migrations when creating the database. No production database was connected or written during this work.

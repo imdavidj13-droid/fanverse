@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { api, type LiveProfile, type Page } from "../api";
+import { AdminNavigation } from "./AdminNavigation";
+import { FandomAdmin } from "./FandomAdmin";
 type Row = Record<string, string | number | null>;
-const sections = ["overview", "reports", "users", "posts", "audit"];
+
 export function AdminPanel({ profile }: { profile: LiveProfile }) {
   const section = location.pathname.split("/")[2] || "overview";
   const [rows, setRows] = useState<Row[]>([]),
@@ -30,7 +32,7 @@ export function AdminPanel({ profile }: { profile: LiveProfile }) {
   }
   useEffect(() => {
     let cancelled = false;
-    if (!staff) return;
+    if (!staff || ["fandoms", "fandom-requests"].includes(section)) return;
     setBusy(true);
     setError("");
     setRows([]);
@@ -66,26 +68,15 @@ export function AdminPanel({ profile }: { profile: LiveProfile }) {
         </p>
       </div>
     );
+  if (["fandoms", "fandom-requests"].includes(section))
+    return <FandomAdmin profile={profile} section={section} />;
   return (
     <div className="admin-panel">
       <div className="admin-heading">
         <h2>Community control centre</h2>
         <span className="role-badge">{profile.role}</span>
       </div>
-      <nav className="admin-tabs" aria-label="Administration sections">
-        {sections
-          .filter((s) => s !== "audit" || admin)
-          .map((s) => (
-            <a
-              className={s === section ? "selected" : ""}
-              aria-current={s === section ? "page" : undefined}
-              key={s}
-              href={s === "overview" ? "/admin" : "/admin/" + s}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </a>
-          ))}
-      </nav>
+      <AdminNavigation role={profile.role} section={section} />
       {error && (
         <div className="save-error" role="alert">
           {error}
