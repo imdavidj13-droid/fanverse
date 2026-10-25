@@ -3,6 +3,7 @@ export const pagePaths: Record<string, string> = {
   Home: "/",
   Explore: "/explore",
   Catalogue: "/catalogue",
+  "Listening parties": "/parties",
   "My fandoms": "/fandoms",
   Notifications: "/notifications",
   Messages: "/messages",
@@ -25,12 +26,14 @@ export function parseRoute(path: string) {
   const clean = path.replace(/\/+$/, "") || "/";
   if (/^\/fandoms\/[a-z0-9-]+-q[1-9]\d*$/.test(clean))
     return { page: "Catalogue fandom", fandom: "", found: true };
+  if (/^\/parties\/(?:[1-9]\d*|local-[a-f0-9-]{36})$/.test(clean))
+    return { page: "Listening party", fandom: "", found: true };
   if (/^\/posts\/[1-9]\d*$/.test(clean))
     return { page: "Post", fandom: "", found: true };
   if (/^\/fans\/[a-zA-Z0-9_.-]{1,40}$/.test(clean))
     return { page: "Fan", fandom: "", found: true };
   if (
-    /^\/admin\/(users|posts|reports|audit|fandoms|fandom-requests)$/.test(clean)
+    /^\/admin\/(users|posts|reports|audit|fandoms|fandom-requests|party-reports)$/.test(clean)
   )
     return { page: "Admin", fandom: "", found: true };
   const fandom = Object.keys(fandomSlugs).find(

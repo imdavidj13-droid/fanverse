@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type LiveProfile, type Page } from "../api";
 import { AdminNavigation } from "./AdminNavigation";
+import { PartyReports } from "./PartyReports";
 import { FandomAdmin } from "./FandomAdmin";
 type Row = Record<string, string | number | null>;
 
@@ -32,7 +33,7 @@ export function AdminPanel({ profile }: { profile: LiveProfile }) {
   }
   useEffect(() => {
     let cancelled = false;
-    if (!staff || ["fandoms", "fandom-requests"].includes(section)) return;
+    if (!staff || ["fandoms", "fandom-requests", "party-reports"].includes(section)) return;
     setBusy(true);
     setError("");
     setRows([]);
@@ -68,6 +69,7 @@ export function AdminPanel({ profile }: { profile: LiveProfile }) {
         </p>
       </div>
     );
+  if (section === "party-reports") return <PartyReports role={profile.role} />;
   if (["fandoms", "fandom-requests"].includes(section))
     return <FandomAdmin profile={profile} section={section} />;
   return (

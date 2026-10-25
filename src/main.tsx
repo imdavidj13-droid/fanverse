@@ -33,6 +33,7 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePanel } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { PartiesRail } from "./ListeningParties";
 import { FandomPage, FandomSidebar } from "./FandomPage";
 import { AppLink as Link } from "./Navigation";
 import { LocalPages } from "./LocalPages";
@@ -43,6 +44,7 @@ const nav = [
   { name: "Explore", icon: Compass },
   { name: "My fandoms", icon: Users },
   { name: "Catalogue", icon: Compass },
+  { name: "Listening parties", icon: Headphones },
   { name: "Notifications", icon: Bell },
   { name: "Messages", icon: Mail },
   { name: "Bookmarks", icon: Bookmark },
@@ -305,6 +307,8 @@ function App() {
                       "Profile studio",
                       "Catalogue",
                       "Catalogue fandom",
+                      "Listening parties",
+                      "Listening party",
                     ].includes(page) ? (
                     <LocalPages
                       key={page === "Fan" ? location.pathname : page}
@@ -553,38 +557,7 @@ function App() {
             </main>
             <aside className="rightbar">
               {community ? <FandomSidebar community={community} /> : <>
-              <section className="rail-card">
-                <div className="rail-title">
-                  <h2>Trending now</h2>
-                  <Sparkles size={17} />
-                </div>
-                {[
-                  [
-                    "The concert group chat",
-                    "Music · 2.4K sample posts",
-                    "taylor",
-                  ],
-                  ["#SabrinaCarpenter", "Music · 1.8K sample posts", "sabrina"],
-                  [
-                    "Songs that get you",
-                    "Olivia Rodrigo · 942 sample posts",
-                    "olivia",
-                  ],
-                  [
-                    "One more episode",
-                    "TV & Film · 680 sample posts",
-                    "screen",
-                  ],
-                ].map(([title, sub, id], i) => (
-                  <Link className="trend" href={fandomPath(id)} key={title}>
-                    <span>{i + 1}</span>
-                    <div>
-                      <strong>{title}</strong>
-                      <small>{sub}</small>
-                    </div>
-                  </Link>
-                ))}
-              </section>
+              <PartiesRail joined={state.joined} />
               <section className="rail-card listening-parties">
                 <div className="rail-title">
                   <h2>Upcoming listening parties</h2>
@@ -697,6 +670,8 @@ function App() {
         "Profile studio",
         "Catalogue",
         "Catalogue fandom",
+        "Listening parties",
+        "Listening party",
       ].includes(page) && (
         <button
           className="floating-post primary"

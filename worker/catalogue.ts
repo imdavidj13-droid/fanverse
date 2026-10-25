@@ -361,7 +361,10 @@ export async function catalogueAdmin(
         400,
         "Choose two different subject fandoms of the same type.",
       );
+    const partyStatements = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='listening_parties'").first()
+      ? [db.prepare("UPDATE listening_parties SET fandom_id=? WHERE fandom_id=?").bind(target.id,source.id)] : [];
     await db.batch([
+      ...partyStatements,
       db
         .prepare(
           "INSERT OR IGNORE INTO fandom_memberships(user_id,fandom_id) SELECT user_id,? FROM fandom_memberships WHERE fandom_id=?",

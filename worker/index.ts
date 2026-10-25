@@ -1,5 +1,6 @@
 import { createAuth } from "./auth";
 import { admin } from "./admin";
+import { parties } from "./parties";
 import { body, HttpError, json, limit, pageCursor, text } from "./http";
 import { checkOrigin, identity, throttle, visiblePost } from "./security";
 import { configured, type Env } from "./types";
@@ -86,6 +87,7 @@ export default {
       const db = env.DB!,
         person = await identity(request, env, false),
         viewer = person?.user_id || null;
+      if (path === "/api/parties" || path.startsWith("/api/parties/")) return await parties(request, env, person);
       if (path === "/api/me" && request.method === "GET") {
         if (!person) return json({ profile: null });
         const memberships = await db

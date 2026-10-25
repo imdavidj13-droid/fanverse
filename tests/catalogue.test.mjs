@@ -623,3 +623,42 @@ test("exact show titles preserve separate legitimate productions", async () => {
   assert.equal(result.status, 200);
   assert.deepEqual(result.value.items.map(s => s.qid), ["Q9990003", "Q9990002"]);
 });
+
+test("Stationhead party creation validates links and keeps hosting authenticated", async () => {
+  const host=await signup('PartyHost'),other=await signup('PartyGuest');
+  const payload={fandomId:'taylor',title:'Fan night',description:'Bring your favourite bridges',startsAt:new Date(Date.now()+86400000).toISOString(),stationheadUrl:'https://www.stationhead.com/test-host'};
+  assert.equal((await req('/api/parties',{method:'POST',data:payload})).status,401);
+  for(const url of ['https://stationhead.com.evil.test/room','http://stationhead.com/room','https://evil.test/room','https://user:pass@stationhead.com/room','javascript:alert(1)','https://stationhead.com/']){
+    assert.equal((await req('/api/parties',{method:'POST',cookie:host.cookie,data:{...payload,stationheadUrl:url}})).status,400,url);
+  }
+  const created=await req('/api/parties',{method:'POST',cookie:host.cookie,data:payload});assert.equal(created.status,201,JSON.stringify(created.value));const id=created.value.id;
+  assert.equal((await req('/api/parties/'+id,{method:'PATCH',cookie:other.cookie,data:{status:'live'}})).status,403);
+  for(let i=0;i<2;i++)assert.equal((await req('/api/parties/'+id+'/rsvp',{method:'PUT',cookie:other.cookie,data:{choice:'going'}})).status,200);
+  let detail=await req('/api/parties/'+id,{cookie:other.cookie});assert.equal(detail.value.party.going,1);assert.equal(detail.value.party.rsvp,'going');assert.ok(!JSON.stringify(detail.value).includes('@example.test'));
+  assert.equal((await req('/api/parties/'+id,{method:'PATCH',cookie:host.cookie,data:{status:'live'}})).status,200);
+  assert.equal((await req('/api/parties/'+id)).value.party.status,'live');
+  assert.equal((await req('/api/parties/'+id,{method:'PATCH',cookie:host.cookie,data:{status:'ended'}})).status,200);
+  assert.equal((await req('/api/parties/'+id+'/rsvp',{method:'PUT',cookie:other.cookie,data:{choice:'going'}})).status,409);
+  assert.equal((await req('/api/parties/'+id,{method:'PATCH',cookie:host.cookie,data:{status:'live'}})).status,409);
+  assert.equal((await req('/api/parties/'+id+'/rsvp',{method:'PUT',cookie:other.cookie,data:{choice:'none'}})).status,200);
+  assert.ok(await db.prepare("SELECT id FROM audit_log WHERE action='party.ended' AND target_id=?").bind(String(id)).first());
+});
+test("listening party reports are private to staff and review actions are audited",async()=>{
+  const host=await signup('ReportHost'),guest=await signup('ReportGuest');
+  const created=await req('/api/parties',{method:'POST',cookie:host.cookie,data:{fandomId:'taylor',title:'Reported room',description:'',startsAt:new Date(Date.now()+86400000).toISOString(),stationheadUrl:'https://share.stationhead.com/test-room'}});assert.equal(created.status,201);const id=created.value.id;
+  assert.equal((await req('/api/parties/'+id+'/report',{method:'POST',cookie:guest.cookie,data:{reason:'Misleading event details'}})).status,200);
+  assert.equal((await req('/api/parties/reports',{cookie:guest.cookie})).status,403);
+  const list=await req('/api/parties/reports',{cookie:accounts.admin.cookie});assert.equal(list.status,200);const report=list.value.items.find(r=>r.party_id===id);assert.ok(report);
+  assert.equal((await req('/api/parties/reports/'+report.id,{method:'PATCH',cookie:accounts.admin.cookie,data:{status:'resolved',note:'Host corrected details'}})).status,200);
+  assert.ok(await db.prepare("SELECT id FROM audit_log WHERE action='party-report.resolved' AND target_id=?").bind(String(report.id)).first());
+});
+test("party visibility respects blocks and suspension and follows canonical fandom merges",async()=>{
+  const host=await signup('VisibleHost'),guest=await signup('VisibleGuest');
+  await db.prepare("INSERT INTO fandoms(id,slug,name,kind) VALUES('party-source','party-source','Source performer','artist'),('party-target','party-target','Canonical performer','artist')").run();
+  const created=await req('/api/parties',{method:'POST',cookie:host.cookie,data:{fandomId:'party-source',title:'Visible event',description:'',startsAt:new Date(Date.now()+86400000).toISOString(),stationheadUrl:'https://stationhead.com/test-station'}});assert.equal(created.status,201);const id=created.value.id;
+  await req('/api/blocks/'+host.id,{method:'PUT',cookie:guest.cookie});assert.equal((await req('/api/parties/'+id,{cookie:guest.cookie})).status,404);assert.ok(!(await req('/api/parties',{cookie:guest.cookie})).value.items.some(p=>p.id===id));
+  assert.equal((await req('/api/parties/'+id+'/rsvp',{method:'PUT',cookie:guest.cookie,data:{choice:'going'}})).status,404);
+  assert.equal((await req('/api/admin/fandoms/party-source/merge',{method:'POST',cookie:accounts.admin.cookie,data:{targetId:'party-target',reason:'Consolidating canonical fandom'}})).status,200);
+  assert.equal((await req('/api/parties/'+id)).value.party.fandom_id,'party-target');
+  await db.prepare("UPDATE profiles SET status='suspended' WHERE user_id=?").bind(host.id).run();assert.equal((await req('/api/parties/'+id)).status,404);
+});

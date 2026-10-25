@@ -5,6 +5,7 @@ import { useRoute, fandomPath, navigate } from "./routes";
 import { AppLink } from "./Navigation";
 import { PostCard } from "./PostCard";
 import { ProfileStudio } from "./ProfileStudio";
+import { ListeningPartyBoard, ListeningPartyDetail } from "./ListeningParties";
 import { CatalogueBrowser, CatalogueFandom } from "./CatalogueBrowser";
 type Props = {
   state: State;
@@ -100,6 +101,8 @@ export function LocalPages({ state, update, onNotice }: Props) {
     fandom: "",
     query: "",
   });
+  if (route.page === "Listening parties") return <ListeningPartyBoard hostName={state.profile.name} />;
+  if (route.page === "Listening party") return <ListeningPartyDetail key={location.pathname} />;
   if (route.page === "Catalogue") return <CatalogueBrowser />;
   if (route.page === "Catalogue fandom") return <CatalogueFandom />;
   if (route.page === "Profile studio")

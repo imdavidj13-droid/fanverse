@@ -10,6 +10,7 @@ export function AdminNavigation({
       {[
         ["overview", "Overview"],
         ["reports", "Reports"],
+        ["party-reports", "Party reports"],
         ["users", "Users"],
         ["posts", "Posts"],
         ["fandoms", "Fandoms"],
