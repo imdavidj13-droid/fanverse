@@ -1,0 +1,7 @@
+# Local development only. Copy to .dev.vars and generate a fresh secret.
+BETTER_AUTH_URL="http://localhost:8787"
+BETTER_AUTH_SECRET="replace-with-a-random-secret-of-at-least-32-characters"
+AUTH_DEV_MODE="true"
+# Production requires HTTPS plus verified account email delivery:
+# RESEND_API_KEY="set-as-a-Cloudflare-secret"
+# EMAIL_FROM="Your community <accounts@your-verified-domain>"

@@ -1,1 +1,29 @@
-{"name":"fanverse","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"tsc -b && vite build","preview":"vite preview --host 0.0.0.0","typecheck":"tsc -b"},"dependencies":{"lucide-react":"^0.468.0","react":"^19.0.0","react-dom":"^19.0.0"},"devDependencies":{"@types/react":"^19.0.0","@types/react-dom":"^19.0.0","typescript":"~5.7.2","vite":"^6.4.1","wrangler":"^4.152.0"}}
+{
+  "name": "fanverse",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "tsc -b && tsc -p tsconfig.worker.json",
+    "dev:worker": "wrangler dev",
+    "test": "npm run build && wrangler deploy --dry-run --outdir .worker-test && node --test tests/backend.test.mjs"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.12",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261025.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "miniflare": "^5.20261019.2-beta",
+    "typescript": "~5.7.2",
+    "vite": "^6.4.1",
+    "wrangler": "^4.152.0"
+  }
+}
