@@ -117,6 +117,8 @@ export function filterPosts(
           ? state.following.includes(post.handle)
           : tab === "My fandoms"
             ? state.joined.includes(post.fandom)
+            : tab === "Discover"
+              ? true
             : state.joined.includes(post.fandom) ||
               state.following.includes(post.handle))) &&
       (!query ||

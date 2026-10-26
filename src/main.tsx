@@ -16,7 +16,6 @@ import {
   Sparkles,
   Music,
   Clapperboard,
-  CalendarDays,
   Headphones,
   Settings,
 } from "lucide-react";
@@ -33,6 +32,7 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePanel } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { HomeFeed, HomeSidebar } from "./HomeFeed";
 import { SignupLanding } from "./SignupLanding";
 import { api } from "./api";
 import { PartiesRail } from "./ListeningParties";
@@ -302,6 +302,8 @@ function App() {
                 <>
                   {community ? (
                     <FandomPage key={community.id} community={community} state={state} update={update} onNotice={setNotice} />
+                  ) : page === "Home" ? (
+                    <HomeFeed state={state} update={update} onNotice={setNotice} onPublish={publish} />
                   ) : ["Account", "Community", "Admin"].includes(page) ? (
                     <LiveArea page={page} />
                   ) : [
@@ -324,29 +326,6 @@ function App() {
                     />
                   ) : (
                     <>
-                      {page === "Home" ? (
-                        <>
-                          <h1 className="sr-only">Home feed</h1>
-                          <div className="tabs" aria-label="Feed filter">
-                            {["For you", "Following", "My fandoms"].map((t) => (
-                              <Link
-                                aria-current={tab === t ? "page" : undefined}
-                                className={tab === t ? "active" : ""}
-                                key={t}
-                                href={
-                                  t === "Following"
-                                    ? "/?feed=following"
-                                    : t === "My fandoms"
-                                      ? "/?feed=fandoms"
-                                      : "/"
-                                }
-                              >
-                                {t}
-                              </Link>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
                         <div className="page-heading">
                           <div>
                             <h1>{page}</h1>
@@ -363,7 +342,7 @@ function App() {
                             </p>
                           </div>
                         </div>
-                      )}
+
                       {(page === "Explore" || page === "My fandoms") && (
                         <>
                           <div className="category-label">
@@ -467,65 +446,6 @@ function App() {
                                 onNotice={setNotice}
                               />
                             )}{" "}
-                            {page === "Home" && (
-                              <>
-                                {!active && (
-                                  <div
-                                    className="fandom-strip"
-                                    aria-label="Quick fandom filters"
-                                  >
-                                    <Link className="active" href="/">
-                                      <span className="fandom-avatar all-fandoms">
-                                        <Heart size={22} />
-                                      </span>
-                                      <small>All</small>
-                                    </Link>
-                                    {fandoms
-                                      .filter((f) =>
-                                        state.joined.includes(f.id),
-                                      )
-                                      .map((f) => (
-                                        <Link
-                                          key={f.id}
-                                          href={fandomPath(f.id)}
-                                        >
-                                          <span
-                                            className="fandom-avatar"
-                                            style={{ background: f.color }}
-                                          >
-                                            {f.symbol}
-                                          </span>
-                                          <small>
-                                            {f.id === "taylor"
-                                              ? "Taylor Swift"
-                                              : f.id === "sabrina"
-                                                ? "Sabrina"
-                                                : f.id === "olivia"
-                                                  ? "Olivia"
-                                                  : f.name}
-                                          </small>
-                                        </Link>
-                                      ))}
-                                    <Link href="/explore">
-                                      <span className="fandom-avatar more-fandoms">
-                                        <Plus size={20} />
-                                      </span>
-                                      <small>Discover</small>
-                                    </Link>
-                                  </div>
-                                )}
-                                <Composer
-                                  key={active || "home"}
-                                  context={active || "home"}
-                                  profile={state.profile}
-                                  onPublish={publish}
-                                  onNotice={setNotice}
-                                  initialFandom={
-                                    active || state.joined[0] || "taylor"
-                                  }
-                                />
-                              </>
-                            )}
                             {visible.map((p) => (
                               <PostCard
                                 key={p.id}
@@ -563,51 +483,9 @@ function App() {
             </main>
             <aside className="rightbar">
               {community ? <FandomSidebar community={community} /> : <>
+              {page === "Home" && <HomeSidebar state={state} />}
               <PartiesRail joined={state.joined} />
-              <section className="rail-card listening-parties">
-                <div className="rail-title">
-                  <h2>Upcoming listening parties</h2>
-                  <Headphones size={17} />
-                </div>
-                <p className="rail-subtitle">Sample community events</p>
-                {[
-                  {
-                    fandom: "olivia",
-                    name: "GUTS listening room",
-                    time: "Friday · 8:00 PM",
-                  },
-                  {
-                    fandom: "sabrina",
-                    name: "Short n’ Sweet replay",
-                    time: "Saturday · 7:00 PM",
-                  },
-                ].map((event) => {
-                  const f = fandoms.find((f) => f.id === event.fandom)!;
-                  return (
-                    <div className="party" key={f.id}>
-                      <span
-                        className="party-art"
-                        style={{ background: f.color }}
-                        aria-hidden="true"
-                      >
-                        {f.symbol}
-                        <Headphones size={17} />
-                      </span>
-                      <div>
-                        <strong>{event.name}</strong>
-                        <small>{f.name}</small>
-                        <span className="party-time">
-                          <CalendarDays size={11} />
-                          {event.time}
-                        </span>
-                        <Link className="secondary" href={fandomPath(f.id)}>
-                          View fandom
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-              </section>
+
               <section className="rail-card">
                 <div className="rail-title">
                   <h2>Find your people</h2>
