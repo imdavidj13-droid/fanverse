@@ -34,6 +34,7 @@ import { ProfilePage } from "./Profile";
 import { LiveArea } from "./LiveArea";
 import { BookmarksPage } from "./BookmarksPage";
 import { HomeFeed, HomeSidebar } from "./HomeFeed";
+import { Onboarding } from "./Onboarding";
 import { SignupLanding } from "./SignupLanding";
 import { api } from "./api";
 import { PartiesRail } from "./ListeningParties";
@@ -74,7 +75,10 @@ function App() {
     [saveError, setSaveError] = useState("");
   const [previewAccess,setPreviewAccess] = useState(() => { try { return sessionStorage.getItem("fanverse.preview-entry") === "yes"; } catch { return false; } });
   const [authenticated,setAuthenticated] = useState(false);
-  useEffect(() => { let active = true; const check = async () => { try { const status = await api<{ready:boolean}>("/api/status"); const me = status.ready ? await api<{profile:unknown}>("/api/me") : null; if(active)setAuthenticated(Boolean(me?.profile)); } catch { if(active)setAuthenticated(false); } }; void check(); window.addEventListener("fanverse-auth-changed",check); return () => { active=false; window.removeEventListener("fanverse-auth-changed",check); }; }, []);
+  const [onboarding,setOnboarding] = useState<{display_name:string}|null>(null);
+  const [authChecked,setAuthChecked] = useState(false);
+  useEffect(() => { let active = true; const check = async () => { try { const status = await api<{ready:boolean}>("/api/status"); const me = status.ready ? await api<{profile:{display_name:string}|null;onboardingCompleted?:boolean}>("/api/me") : null; if(active){setAuthenticated(Boolean(me?.profile));setOnboarding(me?.profile && !me.onboardingCompleted ? me.profile : null);} } catch { if(active)setAuthenticated(false); } finally {if(active)setAuthChecked(true);} }; void check(); window.addEventListener("fanverse-auth-changed",check); return () => { active=false; window.removeEventListener("fanverse-auth-changed",check); }; }, []);
+  useEffect(() => {if(page === "Onboarding" && authChecked && authenticated && !onboarding)navigate("/");},[page,authChecked,authenticated,onboarding]);
   const dialog = useRef<HTMLDialogElement>(null);
   const update = (fn: (s: State) => State) =>
     setState((before) => recordActivity(before, fn(before)));
@@ -129,7 +133,10 @@ function App() {
         Number(a.id === state.profileStyle.pinnedPostId),
     );
   const community = fandoms.find((f) => f.id === active);
-  if (["Sign up","Sign in"].includes(page) || (page === "Home" && !active && !previewAccess && !authenticated)) return <SignupLanding initialMode={page === "Sign in" ? "login" : "signup"} onExplore={() => { setPreviewAccess(true); try { sessionStorage.setItem("fanverse.preview-entry","yes"); } catch { /* This visit still works. */ } navigate("/"); }} onAuthenticated={() => { setAuthenticated(true); navigate("/"); }} />;
+  if (onboarding) return <Onboarding initialName={onboarding.display_name} onComplete={() => {setOnboarding(null);setAuthenticated(true);navigate("/");}} />;
+  if (!authChecked && ["Account","Home","Onboarding","Sign up","Sign in"].includes(page)) return <main className="signup-screen"><section className="signup-card"><p role="status">Getting your account ready…</p></section></main>;
+  if (page === "Onboarding") return <SignupLanding onExplore={() => navigate("/")} onAuthenticated={() => {window.dispatchEvent(new Event("fanverse-auth-changed"));navigate("/account");}} />;
+  if (["Sign up","Sign in"].includes(page) || (page === "Home" && !active && !previewAccess && !authenticated)) return <SignupLanding initialMode={page === "Sign in" ? "login" : "signup"} onExplore={() => { setPreviewAccess(true); try { sessionStorage.setItem("fanverse.preview-entry","yes"); } catch { /* This visit still works. */ } navigate("/"); }} onAuthenticated={() => { window.dispatchEvent(new Event("fanverse-auth-changed")); navigate("/onboarding"); }} />;
   return (
     <>
       <a className="skip" href="#main">

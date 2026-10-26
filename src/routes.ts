@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 export const pagePaths: Record<string, string> = {
   Home: "/",
+  Onboarding: "/onboarding",
   "Sign up": "/join",
   "Sign in": "/login",
   Explore: "/explore",

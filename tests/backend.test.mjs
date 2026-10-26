@@ -496,3 +496,20 @@ test("a partial social credential pair does not enable production accounts",asyn
  const partial=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings:{BETTER_AUTH_URL:'https://fanverse-auth-test.example',BETTER_AUTH_SECRET:'partial-only-test-secret-1234567890123456789',GOOGLE_CLIENT_ID:'client-without-secret',APPLE_CLIENT_SECRET:'secret-without-client'}}));
  try{assert.equal((await (await partial.dispatchFetch('https://fanverse-auth-test.example/api/status')).json()).ready,false)}finally{await partial.dispose()}
 });
+
+test('onboarding checks usernames, completes atomically and keeps birthdays private', async () => {
+ const person=await account('NewFan');
+ assert.equal((await req('/api/me',{cookie:person.cookie})).value.onboardingCompleted,false);
+ assert.equal((await req('/api/onboarding/username?username=admin',{cookie:person.cookie})).value.available,false);
+ assert.equal((await req('/api/onboarding/username?username=new_fan_27',{cookie:person.cookie})).value.available,true);
+ const submit=(data)=>req('/api/onboarding',{method:'POST',cookie:person.cookie,data});
+ assert.equal((await submit({displayName:'David',username:'new_fan_27',dateOfBirth:'2026-02-30'})).status,400);
+ assert.equal((await submit({displayName:'David',username:'new_fan_27',dateOfBirth:'2000-04-12'})).status,200);
+ const me=(await req('/api/me',{cookie:person.cookie})).value;
+ assert.equal(me.onboardingCompleted,true);assert.equal(me.profile.username,'new_fan_27');assert.equal(me.profile.display_name,'David');
+ assert.ok(!JSON.stringify(me).includes('2000-04-12'));
+ assert.equal((await req('/api/onboarding/username?username=new_fan_27',{cookie:accounts.bob.cookie})).value.available,false);
+ assert.equal((await req('/api/onboarding',{method:'POST',cookie:accounts.bob.cookie,data:{displayName:'Taken',username:'new_fan_27',dateOfBirth:'2000-01-01'}})).status,409);
+ assert.equal(await db.prepare('SELECT user_id FROM account_onboarding WHERE user_id=?').bind(accounts.bob.id).first(),null);
+ assert.equal((await req('/api/onboarding/username?username=anything')).status,401);
+});

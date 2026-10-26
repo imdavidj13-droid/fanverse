@@ -110,6 +110,7 @@ export default {
           .all();
         return json({
           profile: person,
+          onboardingCompleted: Boolean(await db.prepare("SELECT user_id FROM account_onboarding WHERE user_id=?").bind(viewer).first().catch(() => null)),
           memberships: memberships.results.map((row) => row.fandom_id),
         });
       }
@@ -246,6 +247,33 @@ export default {
         return await catalogueMember(request, env, person);
       if (path.startsWith("/api/admin/"))
         return await admin(request, env, person);
+      if (path === "/api/onboarding/username" && request.method === "GET") {
+        if (!person) throw new HttpError(401, "Please sign in.");
+        const username = (url.searchParams.get("username") || "").toLowerCase();
+        if (!/^[a-z0-9_]{3,24}$/.test(username)) return json({ available: false, reason: "Use 3–24 letters, numbers or underscores." });
+        const reserved = ["admin", "administrator", "support", "moderator", "fanverse", "settings", "api"];
+        const taken = reserved.includes(username) || Boolean(await db.prepare("SELECT user_id FROM profiles WHERE username=? AND user_id!=?").bind(username, viewer).first());
+        return json({ available: !taken, reason: taken ? "That username is taken. Try another." : "That username is available." });
+      }
+      if (path === "/api/onboarding" && request.method === "POST") {
+        if (!person) throw new HttpError(401, "Please sign in.");
+        const value = await body(request), name = text(value.displayName, "Name", 40), username = text(value.username, "Username", 24).toLowerCase();
+        const dob = typeof value.dateOfBirth === "string" ? value.dateOfBirth : "";
+        const date = new Date(dob + "T00:00:00Z"), today = new Date().toISOString().slice(0,10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== dob || dob >= today || dob < "1900-01-01") throw new HttpError(400,"Enter a valid date of birth.");
+        if (!/^[a-z0-9_]{3,24}$/.test(username) || ["admin", "administrator", "support", "moderator", "fanverse", "settings", "api"].includes(username)) throw new HttpError(400,"Choose a valid username: 3–24 letters, numbers or underscores.");
+        try {
+          await db.batch([
+            db.prepare("UPDATE profiles SET username=?,display_name=? WHERE user_id=?").bind(username,name,viewer),
+            db.prepare("INSERT INTO account_onboarding(user_id,date_of_birth) VALUES(?,?) ON CONFLICT(user_id) DO NOTHING").bind(viewer,dob),
+          ]);
+        } catch (error) {
+          if (String(error).includes("UNIQUE")) throw new HttpError(409,"That username was just taken. Please choose another.");
+          if (String(error).includes("no such table")) throw new HttpError(503,"Onboarding database setup is pending. Please try again shortly.");
+          throw error;
+        }
+        return json({ok:true});
+      }
       if (path === "/api/me" && request.method === "PATCH") {
         const value = await body(request),
           name = text(value.displayName, "Display name", 40),

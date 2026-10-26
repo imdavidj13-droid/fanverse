@@ -106,3 +106,7 @@ Google and Apple can now enable shared accounts independently of Resend. The ded
 Google’s registered redirect must exactly match `BETTER_AUTH_URL` plus `/api/auth/callback/google`. Apple’s return URL is `BETTER_AUTH_URL` plus `/api/auth/callback/apple`. Start with a testing Google Auth Platform project while the site is under development. Only basic identity scopes are needed. Apple’s web setup has Apple Developer account, primary App ID/app association, Services ID and signing-key prerequisites; confirm eligibility against Apple’s current documentation before purchasing or configuring an account. Never paste provider client secrets or signing keys into chat or commit them to GitHub.
 
 These code paths were tested using synthetic credentials without Resend, including OAuth initiation, email-route rejection and invalid-state rejection. Live Google/Apple registration still requires owner-created credentials and a real provider callback test.
+
+
+## Signup onboarding
+Apply `0005_onboarding.sql` using `npx wrangler d1 migrations apply fanverse-db --remote`. Accounts without a completed onboarding record enter the name, private date of birth, and unique username flow. Birthdays are stored separately from public profiles. Username availability is advisory; the database unique constraint is enforced again on completion.
