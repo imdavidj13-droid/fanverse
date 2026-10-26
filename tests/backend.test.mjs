@@ -472,3 +472,27 @@ test("OAuth starts only for configured providers and cross-origin requests canno
     const finish=await oauth.dispatchFetch(apple.headers.get('location'),{redirect:'manual'});assert.equal(finish.status,302);assert.ok(finish.headers.get('location').includes('/login'));assert.equal(await database.prepare('SELECT COUNT(*) total FROM user').first('total'),0);
   }finally{await oauth.dispose()}
 });
+
+test("production Google and Apple can start without email delivery while email routes stay closed",async()=>{
+ for (const provider of ['google','apple']) {
+  const origin='https://fanverse-auth-test.example';
+  const bindings={BETTER_AUTH_URL:origin,BETTER_AUTH_SECRET:'social-only-test-secret-1234567890123456789',...(provider==='google'?{GOOGLE_CLIENT_ID:'fixture-google-client',GOOGLE_CLIENT_SECRET:'fixture-google-secret'}:{APPLE_CLIENT_ID:'fixture-apple-service',APPLE_CLIENT_SECRET:'fixture-apple-jwt'})};
+  const social=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings}));
+  try {
+   const database=await social.getD1Database('DB');
+   for(const file of (await readdir('migrations')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').map(s=>s.trim()).filter(Boolean))await database.prepare(sql).run();
+   assert.equal((await (await social.dispatchFetch(origin+'/api/status')).json()).ready,true);
+   const methods=await (await social.dispatchFetch(origin+'/api/auth-methods')).json();assert.equal(methods.email,false);assert.equal(methods[provider],true);assert.equal(methods[provider==='google'?'apple':'google'],false);
+   const response=await social.dispatchFetch(origin+'/api/auth/sign-in/social',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({provider,callbackURL:origin+'/account'})});assert.equal(response.status,200);const value=await response.json();assert.equal(new URL(value.url).hostname,provider==='google'?'accounts.google.com':'appleid.apple.com');
+   for(const path of ['sign-up/email','sign-in/email','request-password-reset','send-verification-email']) {
+    const blocked=await social.dispatchFetch(origin+'/api/auth/'+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({name:'Disabled email',email:'disabled@example.test',password:'disabled-email-password-123'})});assert.equal(blocked.status,503,path);
+   }
+   assert.equal(await database.prepare('SELECT COUNT(*) total FROM user').first('total'),0);
+   assert.equal((await social.dispatchFetch('https://wrong-origin.example/api/status').then(r=>r.json())).ready,false);
+  } finally { await social.dispose(); }
+ }
+});
+test("a partial social credential pair does not enable production accounts",async()=>{
+ const partial=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings:{BETTER_AUTH_URL:'https://fanverse-auth-test.example',BETTER_AUTH_SECRET:'partial-only-test-secret-1234567890123456789',GOOGLE_CLIENT_ID:'client-without-secret',APPLE_CLIENT_SECRET:'secret-without-client'}}));
+ try{assert.equal((await (await partial.dispatchFetch('https://fanverse-auth-test.example/api/status')).json()).ready,false)}finally{await partial.dispose()}
+});

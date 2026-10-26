@@ -52,7 +52,7 @@ Future migrations also need applying before deploying code that depends on them.
 
 ## Production account settings
 
-Set `BETTER_AUTH_URL` to the exact HTTPS origin used to access the account service, for example the project's workers.dev URL. Set the following Worker secrets through the Cloudflare dashboard or `npx wrangler secret put NAME`:
+Set `BETTER_AUTH_URL` to the exact HTTPS origin used to access the account service, for example the project's workers.dev URL. Set `BETTER_AUTH_SECRET` as a Worker secret through Cloudflare or `npx wrangler secret put NAME`. The Resend settings below are required only for email/password accounts; Google/Apple can be connected first:
 
 - `BETTER_AUTH_SECRET`: a randomly generated secret of at least 32 characters.
 - `RESEND_API_KEY`: key for account-email delivery.
@@ -98,3 +98,11 @@ The standalone entry is at `/join` (also the first-visit root screen), with `/lo
 - **Phone:** not enabled. An SMS provider, delivery configuration and abuse controls must be chosen before phone verification can be implemented. The current button explains its status without collecting a phone number.
 
 Configuration adapters were tested locally with synthetic credentials and invalid-state rejection. Google/Apple production consent, Apple private relay/email delivery and real provider callbacks still need end-to-end verification after credentials are configured. The UI uses provider settings only through the backend, not browser environment variables.
+
+## Google/Apple before email delivery
+
+Google and Apple can now enable shared accounts independently of Resend. The dedicated D1 schema, matching HTTPS `BETTER_AUTH_URL`, and `BETTER_AUTH_SECRET` are still required. One complete provider credential pair is sufficient: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, or `APPLE_CLIENT_ID` + `APPLE_CLIENT_SECRET`. Email/password signup, email sign-in, password reset and verification resend stay disabled until email delivery is configured. Provider-verified email is required for Google/Apple sign-in; this does not skip OAuth signature/state verification. With no email configuration, OAuth registration does not attempt to send a verification email.
+
+Google’s registered redirect must exactly match `BETTER_AUTH_URL` plus `/api/auth/callback/google`. Apple’s return URL is `BETTER_AUTH_URL` plus `/api/auth/callback/apple`. Start with a testing Google Auth Platform project while the site is under development. Only basic identity scopes are needed. Apple’s web setup has Apple Developer account, primary App ID/app association, Services ID and signing-key prerequisites; confirm eligibility against Apple’s current documentation before purchasing or configuring an account. Never paste provider client secrets or signing keys into chat or commit them to GitHub.
+
+These code paths were tested using synthetic credentials without Resend, including OAuth initiation, email-route rejection and invalid-state rejection. Live Google/Apple registration still requires owner-created credentials and a real provider callback test.

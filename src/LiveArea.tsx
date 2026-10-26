@@ -20,6 +20,7 @@ interface SharedPost {
 export function LiveArea({ page }: { page: string }) {
   const [ready, setReady] = useState<boolean | null>(null),
     [profile, setProfile] = useState<LiveProfile | null>(null),
+    [emailEnabled,setEmailEnabled] = useState(false),
     [error, setError] = useState(""),
     [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false),
@@ -34,8 +35,11 @@ export function LiveArea({ page }: { page: string }) {
         if (cancelled) return;
         setReady(config.ready);
         if (config.ready) {
-          const me = await api<{ profile: LiveProfile | null }>("/api/me");
-          if (!cancelled) setProfile(me.profile);
+          const [me,methods] = await Promise.all([
+            api<{ profile: LiveProfile | null }>("/api/me"),
+            api<{email:boolean}>("/api/auth-methods"),
+          ]);
+          if (!cancelled) { setProfile(me.profile); setEmailEnabled(methods.email); }
         }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
@@ -152,7 +156,7 @@ export function LiveArea({ page }: { page: string }) {
           <h2>The shared service is being connected</h2>
           <p>
             The account and administration screens are built, but a dedicated D1
-            database and account-email settings still need to be connected to
+            database and at least one account sign-in method still need to be connected to
             this Worker.
           </p>
           <p>
@@ -183,7 +187,10 @@ export function LiveArea({ page }: { page: string }) {
                   onSave={() => setRefresh((n) => n + 1)}
                 />
               ) : (
-                <AuthForm onSignedIn={() => setRefresh((n) => n + 1)} />
+                <>
+                  <div className="account-card"><h2>Choose how to sign in</h2><p>Use a connected Google or Apple account to join the community.</p><a className="primary" href="/login">Open sign-in options</a></div>
+                  {emailEnabled && <AuthForm onSignedIn={() => setRefresh((n) => n + 1)} />}
+                </>
               )
             ) : page === "Admin" ? (
               profile ? (

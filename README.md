@@ -9,7 +9,7 @@ React + TypeScript + Vite, using the approved white/lilac/violet Design 1 direct
 There are two deliberately separate experiences while the shared platform is being connected:
 
 - **Local preview:** the existing Home, Explore, My fandoms, Profile and Bookmarks interfaces. Posts, photos, polls, spoiler warnings, profile edits, follows, blocks and activity are saved in the current browser. They do not become public automatically.
-- **Shared backend:** `/account`, `/community` and `/admin`. These use server sessions, normalized D1 tables and authorization. They display a setup message until the dedicated database, account secret, public origin and account-email delivery are configured.
+- **Shared backend:** `/account`, `/community` and `/admin`. These use server sessions, normalized D1 tables and authorization. They display a setup message until the dedicated database, account secret, public origin and at least one sign-in method are configured.
 
 No production database, email account or paid service was provisioned in this implementation session. Backend behaviour was tested against disposable local D1 instances. Production account-email delivery still needs connecting and verification.
 
@@ -165,3 +165,7 @@ Fandom, post-type (everything / photos and art / polls / text), feed search and 
 ## Bookmark collections
 
 `/bookmarks` now supports up to 20 browser-local named collections, Unfiled, search, post-type filters and saved-order sorting. Collection/search/filter choices are URL parameters. Creating, renaming, moving and removing collections persist locally; removing a collection keeps its bookmarks unfiled and offers an in-session Undo. Unsaving/deleting a post clears its collection assignment. Existing saved posts are preserved as Unfiled when upgrading older browser state. Collection assignment is available beneath saved cards and from any post’s menu. Blocked and muted posts remain excluded from lists and collection counts. Shared account bookmarks still use the existing backend and are not synchronised with these local collections.
+
+## Social sign-in without email setup
+
+Google/Apple sign-in can be activated before account-email delivery. Shared readiness accepts either a complete Google or Apple credential pair in addition to the existing D1, HTTPS origin and secret requirements. Email/password signup and email recovery stay unavailable until a sender is configured. `/account` offers the signup/sign-in options rather than an unusable email form in social-only mode. This session does not provision provider accounts or credentials and does not claim a live OAuth callback has been verified.

@@ -3,7 +3,7 @@ import { admin } from "./admin";
 import { parties } from "./parties";
 import { body, HttpError, json, limit, pageCursor, text } from "./http";
 import { checkOrigin, identity, throttle, visiblePost } from "./security";
-import { configured, type Env } from "./types";
+import { configured, emailConfigured, type Env } from "./types";
 import {
   cataloguePublic,
   catalogueMember,
@@ -54,7 +54,7 @@ export default {
           }
         }
         if (path === "/api/auth-methods") return json({
-          email: ready, phone: false,
+          email: Boolean(ready && emailConfigured(env)), phone: false,
           google: Boolean(ready && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
           apple: Boolean(ready && env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET),
         });
@@ -92,6 +92,8 @@ export default {
         if (reader) while (true) { const chunk = await reader.read(); if(chunk.done)break; size+=chunk.value.byteLength; if(size>12000){void reader.cancel();throw new HttpError(413,"Request is too large.");} }
       }
       if (path.startsWith("/api/auth/")) {
+        if (!emailConfigured(env) && ["/api/auth/sign-up/email", "/api/auth/sign-in/email", "/api/auth/request-password-reset", "/api/auth/reset-password", "/api/auth/send-verification-email"].includes(path))
+          throw new HttpError(503,"Email sign-in is not connected yet. Use an available Google or Apple sign-in option.");
         if (!appleReturn && !["GET", "HEAD"].includes(request.method))
           await body(request.clone());
         return await createAuth(env).handler(request);
