@@ -1,10 +1,10 @@
 import "./profile.css";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { fandoms } from "./data";
 import { Avatar, readImage } from "./Composer";
 import type { State } from "./model";
 import { AppLink } from "./Navigation";
-import { navigate } from "./routes";
+import { navigate, useRoute } from "./routes";
 import {
   themePresets,
   presetCss,
@@ -15,10 +15,12 @@ export function ProfileHeader({
   state,
   style = state.profileStyle,
   children,
+  compact = false,
 }: {
   state: State;
   style?: ProfileStyle;
   children?: ReactNode;
+  compact?: boolean;
 }) {
   const parsed = parseThemeCss(style.css),
     pin = state.posts.find(
@@ -31,7 +33,7 @@ export function ProfileHeader({
     );
   return (
     <section
-      className={"custom-profile profile-layout-" + style.layout}
+      className={"custom-profile profile-layout-" + style.layout + (compact ? " compact-profile" : "")}
       style={parsed.values as CSSProperties}
     >
       <div className={"profile-cover pattern-" + style.pattern}>
@@ -41,7 +43,7 @@ export function ProfileHeader({
         <Avatar profile={state.profile} />
         <h2>{state.profile.name}</h2>
         <p className="profile-handle">@david · Local preview profile</p>
-        {style.tagline && <p className="profile-tagline">{style.tagline}</p>}
+        {!compact && style.tagline && <p className="profile-tagline">{style.tagline}</p>}
         <p className="profile-bio">{state.profile.bio}</p>
         {style.showStats && (
           <div className="profile-stats">
@@ -51,12 +53,14 @@ export function ProfileHeader({
           </div>
         )}
         {style.showFandoms && (
-          <div className="profile-badges">
+          <div className={"profile-badges " + (compact ? "compact-profile-badges" : "")}>
             {fandoms
               .filter((f) => state.joined.includes(f.id))
               .map((f) => (
                 <AppLink
                   key={f.id}
+                  aria-label={f.name}
+                  title={f.name}
                   href={
                     "/fandoms/" +
                     {
@@ -67,12 +71,12 @@ export function ProfileHeader({
                     }[f.id]
                   }
                 >
-                  {f.symbol} {f.name}
+                  {f.symbol} {!compact && f.name}
                 </AppLink>
               ))}
           </div>
         )}
-        {(style.song || style.album) && (
+        {!compact && (style.song || style.album) && (
           <div className="profile-favourites">
             {style.song && (
               <div>
@@ -88,8 +92,8 @@ export function ProfileHeader({
             )}
           </div>
         )}
-        {style.quote && <blockquote>{style.quote}</blockquote>}
-        {pin && (
+        {!compact && style.quote && <blockquote>{style.quote}</blockquote>}
+        {!compact && pin && (
           <AppLink className="profile-pin" href={"/posts/" + pin.id}>
             ⌁ Pinned conversation:{" "}
             {pin.spoiler && state.preferences.hideSpoilers
@@ -111,10 +115,14 @@ export function ProfileStudio({
   update: (fn: (s: State) => State) => void;
   onNotice: (s: string) => void;
 }) {
+  useRoute();
+  const editorTabs: Record<string,string> = {design:"Design",details:"Details",css:"Theme CSS"};
+  const section = new URLSearchParams(location.search).get("section") || "design";
   const [draft, setDraft] = useState(state.profileStyle),
-    [tab, setTab] = useState("Design"),
+    [tab, setTab] = useState(editorTabs[section] || "Design"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => setTab(editorTabs[section] || "Design"), [section]);
   const parsed = parseThemeCss(draft.css),
     set = (patch: Partial<ProfileStyle>) =>
       setDraft((d) => ({ ...d, ...patch }));
@@ -159,7 +167,7 @@ export function ProfileStudio({
             key={name}
             aria-pressed={tab === name}
             className={tab === name ? "selected" : ""}
-            onClick={() => setTab(name)}
+            onClick={() => { setTab(name); const id=Object.keys(editorTabs).find(key=>editorTabs[key]===name); navigate("/profile/edit"+(id === "design" ? "" : "?section="+id), {scroll:false}); }}
           >
             {name}
           </button>
@@ -405,8 +413,9 @@ export function ProfileStudio({
             }}
           />
           <p className="local-explainer">
-            Your changes take effect when you save. The rest of the site keeps
-            its white theme.
+            This expanded preview includes your About details. Your profile uses a
+            compact header with favourites in its About tab. Changes take effect
+            when saved; the rest of the site keeps its white theme.
           </p>
         </div>
       </div>

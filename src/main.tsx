@@ -30,7 +30,7 @@ import {
 import { useRoute, navigate, pagePaths, fandomPath } from "./routes";
 import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
-import { ProfilePanel } from "./Profile";
+import { ProfilePage } from "./Profile";
 import { LiveArea } from "./LiveArea";
 import { HomeFeed, HomeSidebar } from "./HomeFeed";
 import { SignupLanding } from "./SignupLanding";
@@ -304,6 +304,8 @@ function App() {
                     <FandomPage key={community.id} community={community} state={state} update={update} onNotice={setNotice} />
                   ) : page === "Home" ? (
                     <HomeFeed state={state} update={update} onNotice={setNotice} onPublish={publish} />
+                  ) : page === "Profile" ? (
+                    <ProfilePage state={state} update={update} onNotice={setNotice} onCompose={()=>setCompose(true)} />
                   ) : ["Account", "Community", "Admin"].includes(page) ? (
                     <LiveArea page={page} />
                   ) : [
@@ -439,13 +441,6 @@ function App() {
                       ) : (
                         page !== "My fandoms" && (
                           <>
-                            {page === "Profile" && (
-                              <ProfilePanel
-                                state={state}
-                                update={update}
-                                onNotice={setNotice}
-                              />
-                            )}{" "}
                             {visible.map((p) => (
                               <PostCard
                                 key={p.id}
