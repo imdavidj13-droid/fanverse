@@ -1,8 +1,8 @@
 import { restoreCollections, type BookmarkCollection } from "./bookmarkCollections";
 import { defaultProfileStyle, type ProfileStyle } from "./profileTheme";
-import { initialPosts, type Post } from "./data";
+import { type Post } from "./data";
 import { defaultPreferences, type Activity } from "./activity";
-export type Profile = { name: string; bio: string; avatar: string };
+export type Profile = { name: string; bio: string; avatar: string; username?: string };
 export type Reply = { id: number; text: string };
 export type State = {
   version: 1;
@@ -25,7 +25,6 @@ export type State = {
   profile: Profile;
   reports: { postId: number; reason: string; createdAt: string }[];
 };
-export const storageKey = "fanverse.preview.v1";
 export function freshState(): State {
   return {
     version: 1,
@@ -33,9 +32,9 @@ export function freshState(): State {
     preferences: { ...defaultPreferences },
     activity: [],
     homeHidden: [],
-    posts: initialPosts,
-    joined: ["taylor", "sabrina", "olivia"],
-    following: ["swiftie.stories", "sabrinaspills"],
+    posts: [],
+    joined: [],
+    following: [],
     blocked: [],
     muted: [],
     liked: [],
@@ -46,37 +45,12 @@ export function freshState(): State {
     votes: {},
     replies: {},
     profile: {
-      name: "David",
-      bio: "Here for the music, the theories and the group chat.",
+      name: "",
+      bio: "",
       avatar: "",
     },
     reports: [],
   };
-}
-export function loadState(): State {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return freshState();
-    const value = JSON.parse(raw);
-    if (
-      value.version !== 1 ||
-      !Array.isArray(value.posts) ||
-      !Array.isArray(value.joined) ||
-      !value.profile
-    )
-      return freshState();
-    return {
-      ...freshState(),
-      ...value,
-      ...restoreCollections(value.bookmarkCollections,value.bookmarkAssignments,value.saved),
-      profileStyle: { ...defaultProfileStyle, ...value.profileStyle },
-      preferences: { ...defaultPreferences, ...value.preferences },
-      activity: Array.isArray(value.activity) ? value.activity : [],
-      homeHidden: Array.isArray(value.homeHidden) ? value.homeHidden : [],
-    };
-  } catch {
-    return freshState();
-  }
 }
 export function toggleValue<T>(values: T[], value: T): T[] {
   return values.includes(value)

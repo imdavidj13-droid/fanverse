@@ -363,8 +363,11 @@ export async function catalogueAdmin(
       );
     const partyStatements = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='listening_parties'").first()
       ? [db.prepare("UPDATE listening_parties SET fandom_id=? WHERE fandom_id=?").bind(target.id,source.id)] : [];
+    const cloudEvents = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='fandom_events'").first()
+      ? [db.prepare("UPDATE fandom_events SET fandom_id=? WHERE fandom_id=?").bind(target.id,source.id)] : [];
     await db.batch([
       ...partyStatements,
+      ...cloudEvents,
       db
         .prepare(
           "INSERT OR IGNORE INTO fandom_memberships(user_id,fandom_id) SELECT user_id,? FROM fandom_memberships WHERE fandom_id=?",

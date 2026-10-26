@@ -1,3 +1,4 @@
+import {statements} from "./sql.mjs";
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
@@ -60,10 +61,7 @@ before(
     db = await mf.getD1Database("DB");
     for (const file of (await readdir("migrations")).sort()) {
       const sql = await readFile("migrations/" + file, "utf8");
-      for (const statement of sql
-        .split(";")
-        .map((s) => s.trim())
-        .filter(Boolean))
+      for (const statement of statements(sql))
         await db.prepare(statement).run();
     }
     accounts.alice = await account("Alice");
@@ -420,7 +418,7 @@ test("a public Worker cannot enable localhost development auth, and missing conf
   );
   try {
     const result = await unconfigured.dispatchFetch(base + "/api/status");
-    assert.deepEqual(await result.json(), { ready: false, mode: "preview" });
+    assert.deepEqual(await result.json(), { ready: false, mode: "unavailable" });
     assert.equal(
       (
         await unconfigured.dispatchFetch(base + "/api/posts", {
@@ -462,7 +460,7 @@ test("OAuth starts only for configured providers and cross-origin requests canno
   const oauth=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings:{BETTER_AUTH_URL:base,BETTER_AUTH_SECRET:'oauth-only-test-secret-1234567890123456789',AUTH_DEV_MODE:'true',GOOGLE_CLIENT_ID:'fixture-google-client',GOOGLE_CLIENT_SECRET:'never-display-this-test-secret',APPLE_CLIENT_ID:'fixture-apple-client',APPLE_CLIENT_SECRET:'never-display-this-apple-test-secret'}}));
   try{
     const database=await oauth.getD1Database('DB');
-    for(const file of (await readdir('migrations')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').map(s=>s.trim()).filter(Boolean))await database.prepare(sql).run();
+    for(const file of (await readdir('migrations')).sort())for(const sql of statements(await readFile('migrations/'+file,'utf8')))await database.prepare(sql).run();
     const methods=await (await oauth.dispatchFetch(base+'/api/auth-methods')).json();assert.equal(methods.google,true);assert.equal(methods.apple,true);assert.ok(!JSON.stringify(methods).includes('secret'));
     const make=(origin)=>oauth.dispatchFetch(base+'/api/auth/sign-in/social',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({provider:'google',callbackURL:base+'/account'})});
     assert.equal((await make('https://evil.test')).status,403);
@@ -480,7 +478,7 @@ test("production Google and Apple can start without email delivery while email r
   const social=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'.worker-test/index.js',compatibilityDate:'2026-10-24',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],bindings}));
   try {
    const database=await social.getD1Database('DB');
-   for(const file of (await readdir('migrations')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').map(s=>s.trim()).filter(Boolean))await database.prepare(sql).run();
+   for(const file of (await readdir('migrations')).sort())for(const sql of statements(await readFile('migrations/'+file,'utf8')))await database.prepare(sql).run();
    assert.equal((await (await social.dispatchFetch(origin+'/api/status')).json()).ready,true);
    const methods=await (await social.dispatchFetch(origin+'/api/auth-methods')).json();assert.equal(methods.email,false);assert.equal(methods[provider],true);assert.equal(methods[provider==='google'?'apple':'google'],false);
    const response=await social.dispatchFetch(origin+'/api/auth/sign-in/social',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({provider,callbackURL:origin+'/account'})});assert.equal(response.status,200);const value=await response.json();assert.equal(new URL(value.url).hostname,provider==='google'?'accounts.google.com':'appleid.apple.com');
@@ -512,4 +510,59 @@ test('onboarding checks usernames, completes atomically and keeps birthdays priv
  assert.equal((await req('/api/onboarding',{method:'POST',cookie:accounts.bob.cookie,data:{displayName:'Taken',username:'new_fan_27',dateOfBirth:'2000-01-01'}})).status,409);
  assert.equal(await db.prepare('SELECT user_id FROM account_onboarding WHERE user_id=?').bind(accounts.bob.id).first(),null);
  assert.equal((await req('/api/onboarding/username?username=anything')).status,401);
+});
+
+test('cloud site stores rich posts, profiles, drafts and collections with account isolation',async()=>{
+ const alice=await account('CloudAlice'),bob=await account('CloudBob');
+ const call=(path,method='GET',data,cookie=alice.cookie)=>req('/api/cloud'+path,{method,data,cookie});
+ assert.equal((await call('/bootstrap')).status,200);
+ let r=await call('/profile','PUT',{name:'Cloud Alice',bio:'Hi',avatar:'',theme:{css:':root { --profile-accent: #abcdef; }',song:'Espresso'},preferences:{compact:true,mutedWords:['spoiler']},revision:0});assert.equal(r.status,200,JSON.stringify(r.value));
+ assert.equal((await call('/profile','PUT',{name:'Overwrite',revision:0})).status,409);
+ assert.equal((await call('/bootstrap')).value.profile.display_name,'Cloud Alice');
+ assert.equal((await call('/bootstrap','GET',undefined,bob.cookie)).value.profile.bio,'');
+ assert.equal((await call('/draft','PUT',{context:'main',draft:{text:'Cloud draft',fandom:'taylor'}})).status,200);
+ assert.equal((await call('/draft')).value.draft.text,'Cloud draft');
+ assert.equal((await call('/draft','GET',undefined,bob.cookie)).value.draft,null);
+ r=await call('/posts','POST',{text:'A shared poll',fandom:'taylor',poll:['one','two']});assert.equal(r.status,201,JSON.stringify(r.value));const id=r.value.id;
+ r=await call('/feed?feed=latest');assert.equal(r.status,200,JSON.stringify(r.value));assert.ok(r.value.items.some(p=>p.id===id));assert.equal((await call('/draft')).value.draft,null);
+ assert.equal((await call('/posts/'+id+'/vote','PUT',{choice:2})).status,400);
+ assert.equal((await call('/posts/'+id+'/vote','PUT',{choice:1})).status,200);
+ assert.equal((await call('/posts/'+id+'/vote','PUT',{choice:0})).status,200);
+ r=await call('/feed?feed=polls');const poll=r.value.items.find(p=>p.id===id);assert.equal(poll.vote,0);assert.deepEqual(poll.poll,['one','two']);assert.equal(poll.pollCounts.reduce((s,v)=>s+v.count,0),1);
+ const c=(await call('/collections','POST',{name:'My favourites'})).value;
+ assert.equal((await call('/posts/'+id+'/collection','PUT',{collection:c.id})).status,200);
+ assert.equal((await call('/posts/'+id+'/collection','PUT',{collection:c.id},bob.cookie)).status,404);
+ assert.equal((await call('/feed?feed=bookmarks&collection='+c.id)).value.items.length,1);
+ await call('/collections/'+c.id,'DELETE');assert.ok((await call('/feed?feed=bookmarks')).value.items.some(p=>p.id===id));
+ assert.equal((await call('/posts','POST',{text:'Invalid image',fandom:'taylor',image:'data:image/svg+xml;base64,AAAA'})).status,400);
+ assert.equal((await call('/bootstrap')).value.preferences.compact,true);
+ assert.ok(!JSON.stringify((await call('/fans/'+(await req('/api/me',{cookie:alice.cookie})).value.profile.username)).value).includes('mutedWords'));
+});
+
+test('cloud messages, notifications and event RSVPs are private and enforce blocks',async()=>{
+ const alice=await account('SocialAlice'),bob=await account('SocialBob'),third=await account('SocialThird');
+ const call=(path,method='GET',data,cookie=alice.cookie)=>req('/api/cloud'+path,{method,data,cookie});
+ assert.equal((await call('/messages','POST',{recipient:bob.id,text:'Private hello'})).status,201);
+ assert.equal((await call('/messages','GET',undefined,bob.cookie)).value.items.length,1);
+ assert.equal((await call('/messages','GET',undefined,third.cookie)).value.items.length,0);
+ assert.equal((await call('/messages/read','PUT',{sender:alice.id},bob.cookie)).status,200);
+ assert.ok((await call('/messages')).value.items[0].read_at);
+ const post=(await call('/posts','POST',{text:'Notify me',fandom:'taylor'})).value.id;
+ await req('/api/posts/'+post+'/likes',{method:'PUT',cookie:bob.cookie});
+ await req('/api/posts/'+post+'/replies',{method:'POST',data:{text:'Reply'},cookie:bob.cookie});
+ await req('/api/follows/'+alice.id,{method:'PUT',cookie:bob.cookie});
+ const notifications=(await call('/notifications')).value.items;assert.deepEqual(new Set(notifications.map(n=>n.kind)),new Set(['like','reply','follow']));
+ assert.equal((await call('/notifications','GET',undefined,third.cookie)).value.items.length,0);
+ await call('/notifications/read','PUT',{});assert.ok((await call('/notifications')).value.items.every(n=>n.read_at));
+ const event=(await call('/events','POST',{fandom:'taylor',title:'Watch along',startsAt:new Date(Date.now()+86400000).toISOString()})).value;
+ assert.ok(event.id);assert.equal((await call('/events/'+event.id+'/rsvp','PUT',{},bob.cookie)).status,200);
+ await call('/events/'+event.id+'/rsvp','PUT',{},bob.cookie);assert.equal((await call('/events')).value.items.find(e=>e.id===event.id).going,1);
+ assert.equal((await call('/events/'+event.id,'DELETE',{},bob.cookie)).status,403);
+ await req('/api/blocks/'+bob.id,{method:'PUT',cookie:alice.cookie});
+ assert.equal((await call('/messages','POST',{recipient:bob.id,text:'Blocked'})).status,404);
+ assert.equal((await call('/messages','GET',undefined,bob.cookie)).value.items.length,0);
+ assert.equal((await call('/events/'+event.id+'/rsvp','PUT',{},bob.cookie)).status,404);
+ assert.ok(!(await call('/feed','GET',undefined,bob.cookie)).value.items.some(p=>p.id===post));
+ assert.equal((await req('/api/cloud/bootstrap')).status,401);
+ assert.equal((await req('/api/cloud/messages',{method:'POST',cookie:alice.cookie,origin:'https://evil.test',data:{recipient:third.id,text:'CSRF'}})).status,403);
 });

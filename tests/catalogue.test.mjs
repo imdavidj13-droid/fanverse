@@ -1,3 +1,4 @@
+import {statements} from "./sql.mjs";
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
@@ -126,10 +127,7 @@ async function req(path, { method = "GET", cookie, data } = {}) {
 }
 async function apply(database, files) {
   for (const name of files) {
-    for (const sql of (await readFile("migrations/" + name, "utf8"))
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean))
+    for (const sql of statements(await readFile("migrations/" + name, "utf8")))
       await database.prepare(sql).run();
   }
 }

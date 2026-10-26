@@ -1,51 +1,92 @@
-import { useEffect, useState } from "react";
-import { CalendarDays, Headphones, ArrowUpRight, Plus, Check, Heart, ArrowLeft } from "lucide-react";
-import { api, type LiveProfile, type Page } from "./api";
-import { fandoms } from "./data";
-import { AppLink } from "./Navigation";
-import { navigate, fandomPath } from "./routes";
-import { stationheadUrl, partyPath, partyLabel, calendarFile, type ListeningParty, type PartyRsvp, type PartyStatus } from "../shared/parties";
-import "./parties.css";
-const key="fanverse.listening-parties.v1",changed="fanverse-parties-changed";
-function readLocal(): ListeningParty[] {
-  try { const value=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(value)?value.filter(p=>p && typeof p.id==="string" && /^local-[a-f0-9-]{36}$/.test(p.id) && typeof p.title==="string" && typeof p.description==="string" && typeof p.fandom_id==="string" && typeof p.fandom_name==="string" && typeof p.host_name==="string" && typeof p.host_username==="string" && typeof p.host_id==="string" && Number.isInteger(p.going) && Number.isInteger(p.interested) && typeof p.starts_at==="string" && Number.isFinite(Date.parse(p.starts_at)) && typeof p.stationhead_url==="string" && stationheadUrl(p.stationhead_url) && ["scheduled","live","ended","cancelled"].includes(p.status) && ["none","going","interested"].includes(p.rsvp)):[]; } catch { return []; }
+import { useEffect, useState } from 'react';
+import { Headphones, ArrowUpRight, CalendarDays } from 'lucide-react';
+import { api, type LiveProfile, type Page } from './api';
+import { AppLink } from './Navigation';
+import { navigate } from './routes';
+import { stationheadUrl, partyPath, partyLabel, calendarFile, type ListeningParty } from '../shared/parties';
+import './parties.css';
+function PartyCard({ party: p }: {
+    party: ListeningParty;
+}) { return <article className="listening-card"><div className="listening-art"><Headphones /></div><div className="listening-card-body"><span className={'party-status ' + p.status}>{partyLabel(p)}</span><AppLink href={partyPath(p.id)}><h3>{p.title}</h3></AppLink><p>{p.fandom_name}</p><small>{new Date(p.starts_at).toLocaleString('en-GB')}</small></div></article>; }
+export function ListeningPartyBoard({ fandom, embedded = false }: {
+    fandom?: {
+        id: string;
+        name: string;
+    };
+    embedded?: boolean;
+}) {
+    const [items, setItems] = useState<ListeningParty[]>([]), [next, setNext] = useState<string | number | null>(null), [options, setOptions] = useState<{
+        id: string;
+        name: string;
+    }[]>([]), [error, setError] = useState(''), [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [filter, setFilter] = useState('upcoming');
+    async function load(more = false) { setBusy(true); try {
+        const p = new URLSearchParams();
+        if (fandom)
+            p.set('fandom', fandom.id);
+        if (more && next)
+            p.set('before', String(next));
+        const v = await api<Page<ListeningParty>>('/api/parties?' + p);
+        setItems(old => more ? [...old, ...v.items] : v.items);
+        setNext(v.next);
+        setError('');
+    }
+    catch (e) {
+        setError((e as Error).message);
+    }
+    finally {
+        setBusy(false);
+    } }
+    useEffect(() => { void load(); if (!fandom)
+        api<Page<{
+            id: string;
+            name: string;
+        }>>('/api/fandoms?limit=50').then(v => setOptions(v.items)).catch(e => setError((e as Error).message)); }, [fandom?.id]);
+    return <section className={'listening-board ' + (embedded ? 'embedded' : '')}><div className="listening-heading"><div><span className="fandom-eyebrow">MUSIC BRINGS US TOGETHER</span><h1>{embedded ? 'Listening parties' : 'Your next fan night'}</h1><p>Plan here. Listen together on Stationhead.</p></div><Headphones size={30}/></div>{error && <p className="save-error" role="alert">{error}<button onClick={() => void load()}>Retry</button></p>}<div className="cloud-inline"><button className="primary" onClick={() => setOpen(v => !v)}>Create listening party</button><select aria-label="Party filter" value={filter} onChange={e => setFilter(e.target.value)}><option value="upcoming">Upcoming</option><option value="all">All parties</option></select></div>{open && <form className="listening-form" onSubmit={async (e) => { e.preventDefault(); const v = new FormData(e.currentTarget); setBusy(true); try {
+        const room = stationheadUrl(String(v.get('url')));
+        if (!room)
+            throw Error('Use a valid Stationhead room or share link.');
+        const result = await api<{
+            id: number;
+        }>('/api/parties', 'POST', { fandomId: fandom?.id || v.get('fandom'), title: v.get('title'), description: v.get('description'), startsAt: new Date(String(v.get('start'))).toISOString(), stationheadUrl: room });
+        navigate(partyPath(result.id));
+    }
+    catch (e) {
+        setError((e as Error).message);
+    }
+    finally {
+        setBusy(false);
+    } }}>{!fandom && <label>Fandom<select name="fandom" required>{options.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}<label>Party title<input name="title" maxLength={120} required/></label><label>About<textarea name="description" maxLength={1500}/></label><label>Start date and time<input name="start" type="datetime-local" required/></label><label>Stationhead room or share link<input name="url" type="url" maxLength={2000} required placeholder="https://www.stationhead.com/yourstation"/></label><button className="primary" disabled={busy}>Publish listening party</button></form>}<div className="listening-list">{items.filter(p => filter === 'all' || !['ended', 'cancelled'].includes(p.status)).map(p => <PartyCard key={p.id} party={p}/>)}</div>{!items.length && !error && !busy && <div className="listening-empty"><Headphones /><h3>Start the next fan night</h3><p>No parties yet. Add a real Stationhead room and invite your fandom.</p></div>}{busy && <p>Loading…</p>}{next && <button disabled={busy} onClick={() => void load(true)}>Load more parties</button>}<p className="listening-footnote">Music plays on Stationhead. Its account and subscription requirements apply.</p></section>;
 }
-function saveLocal(items:ListeningParty[]){localStorage.setItem(key,JSON.stringify(items));window.dispatchEvent(new Event(changed));}
-function usePartyService(fandom?:string){
- const [ready,setReady]=useState<boolean|null>(null),[profile,setProfile]=useState<LiveProfile|null>(null),[items,setItems]=useState<ListeningParty[]>([]),[next,setNext]=useState<string|number|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0);
- useEffect(()=>{let active=true;api<{ready:boolean}>("/api/status").then(async status=>{if(!active)return;setReady(status.ready);if(status.ready){const me=await api<{profile:LiveProfile|null}>("/api/me");if(active)setProfile(me.profile)}}).catch(e=>{if(active)setError((e as Error).message)});return()=>{active=false}},[]);
- useEffect(()=>{const refresh=()=>setRevision(n=>n+1);window.addEventListener(changed,refresh);window.addEventListener("storage",refresh);return()=>{window.removeEventListener(changed,refresh);window.removeEventListener("storage",refresh)}},[]);
- const path=(cursor?:string|number|null)=>{const p=new URLSearchParams();if(fandom)p.set("fandom",fandom);if(cursor)p.set("before",String(cursor));return "/api/parties?"+p};
- useEffect(()=>{if(ready===null)return;let active=true;setError("");setNext(null);if(!ready){setItems(readLocal().filter(p=>!fandom||p.fandom_id===fandom));return;}setBusy(true);api<Page<ListeningParty>>(path()).then(v=>{if(active){setItems(v.items);setNext(v.next)}}).catch(e=>{if(active)setError((e as Error).message)}).finally(()=>{if(active)setBusy(false)});return()=>{active=false}},[ready,fandom,revision]);
- return {ready,profile,items,next,error,busy,setError,refresh:()=>setRevision(n=>n+1),loadMore:async()=>{setBusy(true);try{const v=await api<Page<ListeningParty>>(path(next));setItems(old=>[...old,...v.items]);setNext(v.next)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}};
+export function ListeningPartyDetail() {
+    const id = location.pathname.split('/').pop(), [party, setParty] = useState<ListeningParty | null>(null), [me, setMe] = useState<LiveProfile | null>(null), [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
+    async function load() { try {
+        const [v, m] = await Promise.all([api<{
+                party: ListeningParty;
+            }>('/api/parties/' + id), api<{
+                profile: LiveProfile;
+            }>('/api/me')]);
+        setParty(v.party);
+        setMe(m.profile);
+    }
+    catch (e) {
+        setError((e as Error).message);
+    } }
+    useEffect(() => { void load(); }, [id]);
+    async function act(path: string, method: string, data: unknown) { setBusy(true); try {
+        await api(path, method, data);
+        await load();
+        return true;
+    }
+    catch (e) {
+        setError((e as Error).message);
+        return false;
+    }
+    finally {
+        setBusy(false);
+    } }
+    if (!party)
+        return <section className="listening-board"><h1>{error ? 'Party unavailable' : 'Opening party…'}</h1>{error && <p role="alert">{error}</p>}</section>;
+    const closed = ['ended', 'cancelled'].includes(party.status), owner = me?.user_id === party.host_id || me?.role === 'admin';
+    return <section className="listening-board"><AppLink href="/parties">← Listening parties</AppLink><div className="party-detail-cover"><Headphones size={45}/><span>STATIONHEAD LISTENING PARTY</span><h1>{party.title}</h1><p>{party.fandom_name}</p></div><p className={'party-status ' + party.status}>{partyLabel(party)}</p><p>{new Date(party.starts_at).toLocaleString('en-GB')}</p><AppLink href={'/fans/' + party.host_username}>Hosted by {party.host_name}</AppLink><p className="party-description">{party.description}</p>{error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}<div className="party-rsvp"><span>{party.going} going · {party.interested} interested</span>{!closed && ['going', 'interested'].map(choice => <button className={party.rsvp === choice ? 'primary' : 'secondary'} disabled={busy} key={choice} onClick={() => void act('/api/parties/' + id + '/rsvp', 'PUT', { choice: party.rsvp === choice ? 'none' : choice })}>{choice === 'going' ? 'Going' : 'Interested'}</button>)}</div>{!closed && <a className="primary" href={stationheadUrl(party.stationhead_url) || undefined} target="_blank" rel="noopener noreferrer">Open Stationhead room <ArrowUpRight size={15}/></a>}<div className="party-detail-actions"><button className="secondary" onClick={() => { const url = URL.createObjectURL(new Blob([calendarFile(party)], { type: 'text/calendar;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = 'listening-party.ics'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}><CalendarDays size={15}/>Add to calendar</button><AppLink href={'/community?fandom=' + party.fandom_id}>Fandom discussion</AppLink></div>{owner && !closed && <section className="party-host-controls"><h2>Host controls</h2><p>Mark live only after you start broadcasting on Stationhead.</p>{['live', 'ended', 'cancelled'].filter(s => s !== party.status).map(status => <button disabled={busy} key={status} onClick={() => void act('/api/parties/' + id, 'PATCH', { status })}>{status === 'live' ? 'Mark live' : status === 'ended' ? 'End party' : 'Cancel party'}</button>)}</section>}<details><summary>Report this party</summary><form className="cloud-form" onSubmit={async (e) => { e.preventDefault(); if(await act('/api/parties/' + id + '/report', 'POST', { reason: new FormData(e.currentTarget).get('reason') })) setNotice('Report submitted to moderators.'); }}><textarea name="reason" required maxLength={500} aria-label="Report reason"/><button disabled={busy}>Submit report</button></form></details></section>;
 }
-const dateLabel=(value:string)=>new Date(value).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZoneName:"short"});
-function PartyCard({party,compact=false}:{party:ListeningParty;compact?:boolean}){
- const f=fandoms.find(f=>f.id===party.fandom_id);
- return <article className={"listening-card "+(compact?"compact":"")}><div className="listening-art" style={{background:f?.color||"#a78dc3"}} aria-hidden="true"><span>{f?.symbol||"✦"}</span><Headphones size={18}/></div><div className="listening-card-body"><span className={"party-status "+party.status}>{partyLabel(party)}</span><AppLink href={partyPath(party.id)}><h3>{party.title}</h3></AppLink><p>{party.fandom_name}</p><small><CalendarDays size={11}/>{dateLabel(party.starts_at)}</small>{!compact && <p>{party.description}</p>}<AppLink className="secondary" href={partyPath(party.id)}>View party <ArrowUpRight size={12}/></AppLink></div></article>
-}
-export function ListeningPartyBoard({fandom,hostName="You",embedded=false}:{fandom?:{id:string;name:string};hostName?:string;embedded?:boolean}){
- const service=usePartyService(fandom?.id),[open,setOpen]=useState(false),[saving,setSaving]=useState(false),[options,setOptions]=useState<{id:string;name:string}[]>(fandoms),[filter,setFilter]=useState("upcoming");
- useEffect(()=>{if(service.ready&&!fandom)api<Page<{id:string;name:string}>>("/api/fandoms?limit=50").then(v=>setOptions(v.items)).catch(e=>service.setError((e as Error).message))},[service.ready,fandom?.id]);
- const visible=service.items.filter(p=>filter==="all"||!['ended','cancelled'].includes(p.status)).sort((a,b)=>Number(b.status==="live")-Number(a.status==="live")||Date.parse(a.starts_at)-Date.parse(b.starts_at));
- return <section className="listening-board"><div className="listening-heading"><div><span className="listening-eyebrow">YOUR FANDOM. ON THE SAME WAVELENGTH.</span>{embedded?<h2>Listening parties</h2>:<h1>Listening parties</h1>}<p>Make a plan here. Listen together on Stationhead.</p></div><span className="listening-heading-icon"><Headphones size={27}/></span></div><p className="listening-mode">{service.ready===null?"Checking party service…":service.ready?"Shared community events":"Local preview · Party plans and RSVPs stay on this browser"}</p><div className="listening-toolbar"><button className="primary" onClick={()=>setOpen(v=>!v)}><Plus size={15}/>{open?"Close form":"Create a listening party"}</button><label><span className="sr-only">Party filter</span><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="upcoming">Upcoming & live</option><option value="all">All parties</option></select></label></div>
- {service.error && <p className="save-error" role="alert">{service.error}</p>}
- {open && <form className="listening-form" onSubmit={async e=>{e.preventDefault();if(service.ready===null)return;service.setError("");setSaving(true);const data=new FormData(e.currentTarget),link=stationheadUrl(String(data.get("url"))),start=Date.parse(String(data.get("start"))),title=String(data.get("title")||"").trim(),description=String(data.get("description")||"").trim(),fandomId=fandom?.id||String(data.get("fandom")),selected=fandom||options.find(f=>f.id===fandomId);try{if(!title||!selected)throw Error("Choose a fandom and enter a title.");if(!link)throw Error("Paste an HTTPS stationhead.com room link or share.stationhead.com link.");if(!Number.isFinite(start)||start<Date.now()-60000||start>Date.now()+366*86400000)throw Error("Choose a start time within the next year.");if(service.ready){if(!service.profile)throw Error("Sign in to create a shared listening party.");const v=await api<{id:number}>("/api/parties","POST",{fandomId,title,description,startsAt:new Date(start).toISOString(),stationheadUrl:link});navigate(partyPath(v.id));}else{const party:ListeningParty={id:"local-"+crypto.randomUUID(),title,description,fandom_id:fandomId,fandom_name:selected.name,starts_at:new Date(start).toISOString(),stationhead_url:link,status:"scheduled",host_id:"local",host_name:hostName,host_username:"local-host",going:0,interested:0,rsvp:"none"};saveLocal([party,...readLocal()]);navigate(partyPath(party.id));}setOpen(false)}catch(err){service.setError((err as Error).message)}finally{setSaving(false)}}}>
- <h3>Bring your people together</h3>{service.ready && !service.profile && <p>Shared hosting needs an account. <AppLink href="/account">Sign in</AppLink></p>}
- {!fandom && <label>Fandom<select name="fandom" required>{options.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
- <label>Party title<input name="title" required maxLength={120} placeholder="Your favourite bridges, back to back"/></label><label>About this party<textarea name="description" maxLength={1500} placeholder="What are we listening to? What should fans know?"/></label><label>Start date and time<input name="start" type="datetime-local" required/><small>Your device’s local time; everyone sees their own time zone.</small></label><label>Stationhead room or share link<input name="url" type="url" required maxLength={2000} placeholder="https://www.stationhead.com/yourstation"/><small>Create or choose a room on Stationhead first, then paste its link here.</small></label><button className="primary" disabled={saving||service.ready===null||(service.ready&&!service.profile)}>{saving?"Saving…":service.ready?"Publish listening party":"Save local listening party"}</button></form>}
- <div className="listening-list">{visible.map(p=><PartyCard key={p.id} party={p}/>)}</div>{service.busy&&<p>Loading listening parties…</p>}{!service.busy && service.ready!==null&&!service.error&&!visible.length&&<div className="listening-empty"><Headphones size={28}/><h3>Your next fan night starts here</h3><p>No {filter==="all"?"":"upcoming "}parties yet. Add a real Stationhead link and bring a plan to life.</p></div>}{service.next&&<button className="secondary" disabled={service.busy} onClick={service.loadMore}>Load more parties</button>}<p className="listening-footnote">Music plays on Stationhead. Its account and streaming subscription requirements apply. <a href="https://stationhead.com/faqs" target="_blank" rel="noreferrer">How Stationhead works ↗</a></p></section>
-}
-export function ListeningPartyDetail(){
- const id=location.pathname.split("/").pop()!,local=id.startsWith("local-"),[party,setParty]=useState<ListeningParty|null>(null),[profile,setProfile]=useState<LiveProfile|null>(null),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[report,setReport]=useState(false),[now,setNow]=useState(Date.now());
- useEffect(()=>{let active=true;setError("");setParty(null);if(local){const value=readLocal().find(p=>p.id===id);setParty(value||null);if(!value)setError("This local party is not saved in this browser. Local previews cannot be shared between devices.");return;}Promise.all([api<{party:ListeningParty}>("/api/parties/"+id),api<{profile:LiveProfile|null}>("/api/me")]).then(([v,me])=>{if(active){setParty(v.party);setProfile(me.profile)}}).catch(e=>{if(active)setError((e as Error).message)});return()=>{active=false}},[id,revision]);
- useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer)},[]);
- async function change(type:"rsvp"|"status",value:string){if(!party)return;setBusy(true);setError("");try{if(local){const next={...party,...(type==="status"?{status:value as PartyStatus}:{rsvp:value as PartyRsvp,going:Number(value==="going"),interested:Number(value==="interested")})};saveLocal(readLocal().map(p=>p.id===id?next:p));setParty(next)}else{await api("/api/parties/"+id+(type==="rsvp"?"/rsvp":""),type==="rsvp"?"PUT":"PATCH",{[type==="rsvp"?"choice":"status"]:value});setRevision(n=>n+1)}setNotice(type==="rsvp"?"Your RSVP has been saved.":"Party status updated.")}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- if(!party)return <section className="listening-board"><AppLink href="/parties">← Listening parties</AppLink><h1>{error?"Party unavailable":"Opening listening party…"}</h1>{error&&<p role="alert">{error}</p>}</section>;
- const closed=["ended","cancelled"].includes(party.status),owner=local||profile?.user_id===party.host_id||profile?.role==="admin",discussion=party.fandom_slug?"/fandoms/"+party.fandom_slug:fandomPath(party.fandom_id);
- return <section className="listening-board"><AppLink className="listening-back" href="/parties"><ArrowLeft size={14}/> Listening parties</AppLink><div className="party-detail-cover"><Headphones size={47}/><span>STATIONHEAD LISTENING PARTY</span><h1>{party.title}</h1><p>{party.fandom_name}</p></div><div className="party-detail-meta"><span className={"party-status "+party.status}>{partyLabel(party,now)}</span><p><CalendarDays size={15}/><time dateTime={party.starts_at}>{dateLabel(party.starts_at)}</time></p><p>Hosted by {party.host_name}{!local&&" · @"+party.host_username}</p></div>{local&&<p className="listening-mode">Local preview · Saved only in this browser. RSVPs represent your selection, not a shared attendance list.</p>}{error&&<p role="alert" className="save-error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}<p className="party-description">{party.description||"A little time together with the music you love."}</p><div className="party-rsvp"><span>{party.going} going · {party.interested} interested</span>{!closed&&(local||profile)?<div>{(["going","interested"] as const).map(choice=><button key={choice} className={party.rsvp===choice?"primary":"secondary"} disabled={busy} aria-pressed={party.rsvp===choice} onClick={()=>change("rsvp",party.rsvp===choice?"none":choice)}>{choice==="going"?<Check size={15}/>:<Heart size={15}/>} {choice==="going"?"Going":"Interested"}</button>)}</div>:!closed&&<AppLink className="secondary" href="/account">Sign in to RSVP</AppLink>}</div><div className="party-join-box"><Headphones size={23}/><div><h2>Keep the music on Stationhead</h2><p>Open the host’s room in a new tab. You’ll sign in and listen there. We don’t verify whether the room is broadcasting.</p>{!closed&&<a className="primary" href={stationheadUrl(party.stationhead_url)||undefined} target="_blank" rel="noopener noreferrer">{party.status==="live"?"Join on Stationhead":"Open Stationhead room"} <ArrowUpRight size={15}/></a>}</div></div><div className="party-detail-actions">{!closed&&<button className="secondary" onClick={()=>{const blob=new Blob([calendarFile(party)],{type:"text/calendar;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="listening-party.ics";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setNotice("Calendar file downloaded. Import it into your calendar to save the event and its 10-minute reminder.")}}><CalendarDays size={15}/> Add to calendar</button>}<AppLink className="secondary" href={discussion}>Fandom discussion ↗</AppLink></div>{owner&&!closed&&<section className="party-host-controls"><h2>Host controls</h2><p>Only mark this live when you have started broadcasting on Stationhead.</p><div>{party.status!=="live"&&<button disabled={busy} className="primary" onClick={()=>change("status","live")}>Mark live</button>}<button disabled={busy} className="secondary" onClick={()=>change("status","ended")}>End party</button><button disabled={busy} className="secondary" onClick={()=>change("status","cancelled")}>Cancel party</button></div></section>}{!local&&profile&&<><button className="text-button" onClick={()=>setReport(v=>!v)}>Report this party</button>{report&&<form className="listening-form" onSubmit={async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get("reason"));setBusy(true);try{await api("/api/parties/"+id+"/report","POST",{reason});setReport(false);setNotice("Report saved for staff review.")}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}><label>Reason<textarea name="reason" required maxLength={500}/></label><button className="primary" disabled={busy}>Submit report</button></form>}</>}<p className="listening-footnote">Independent fan event. Stationhead’s account and subscription requirements apply. Calendar duration is a suggested one-hour slot.</p></section>
-}
-export function PartiesRail({fandom,joined}:{fandom?:{id:string;name:string};joined?:string[]}){
- const service=usePartyService(fandom?.id),items=service.items.filter(p=>!['ended','cancelled'].includes(p.status)&&(!joined||joined.includes(p.fandom_id))).sort((a,b)=>Number(b.status==='live')-Number(a.status==='live')||Date.parse(a.starts_at)-Date.parse(b.starts_at)).slice(0,3);
- return <section className="rail-card"><div className="rail-title"><h2>Listening parties</h2><Headphones size={17}/></div><p className="rail-subtitle">{service.ready?"Stationhead community events":"Local Stationhead party plans"}</p>{items.map(p=><PartyCard compact key={p.id} party={p}/>)}{service.error&&<p className="listening-footnote">{service.error}</p>}{!items.length&&!service.error&&<p className="listening-footnote">{service.ready===null?"Loading…":"No party plans yet. Start the next fan night."}</p>}<AppLink className="secondary" href={fandom?fandomPath(fandom.id)+"?section=events":"/parties"}>Browse & create parties <ArrowUpRight size={12}/></AppLink></section>
-}
+export function PartiesRail() { const [items, setItems] = useState<ListeningParty[]>([]), [error, setError] = useState(''); useEffect(() => { api<Page<ListeningParty>>('/api/parties?limit=3').then(v => setItems(v.items.filter(p => !['ended', 'cancelled'].includes(p.status)))).catch(e => setError((e as Error).message)); }, []); return <section className="rail-card"><h2>Listening parties</h2>{items.map(p => <PartyCard key={p.id} party={p}/>)}{error && <p>{error}</p>}{!items.length && !error && <p>No upcoming parties yet.</p>}<AppLink href="/parties">Browse and create parties ↗</AppLink></section>; }

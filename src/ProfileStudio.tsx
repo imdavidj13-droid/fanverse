@@ -42,7 +42,7 @@ export function ProfileHeader({
       <div className="profile-body">
         <Avatar profile={state.profile} />
         <h2>{state.profile.name}</h2>
-        <p className="profile-handle">@david · Local preview profile</p>
+        <p className="profile-handle">@{state.profile.username}</p>
         {!compact && style.tagline && <p className="profile-tagline">{style.tagline}</p>}
         <p className="profile-bio">{state.profile.bio}</p>
         {style.showStats && (
@@ -112,7 +112,7 @@ export function ProfileStudio({
   onNotice,
 }: {
   state: State;
-  update: (fn: (s: State) => State) => void;
+  update: (fn: (s: State) => State) => void | Promise<void>;
   onNotice: (s: string) => void;
 }) {
   useRoute();
@@ -141,18 +141,16 @@ export function ProfileStudio({
         <AppLink href="/profile">← Back to your profile</AppLink>
         <h1>Profile studio</h1>
         <p>
-          Make this space yours. Your theme is saved on this browser until
-          shared profiles are connected.
+          Make this space yours. Your theme is saved to your account.
         </p>
       </div>
       <div className="studio-toolbar">
         <button
           className="primary"
           disabled={Boolean(parsed.error) || busy}
-          onClick={() => {
-            update((s) => ({ ...s, profileStyle: draft }));
-            onNotice("Your profile theme has been saved on this browser.");
-            navigate("/profile");
+          onClick={async () => {
+            setBusy(true); setError("");
+            try { await update((s) => ({ ...s, profileStyle: draft })); onNotice("Your profile theme has been saved to your account."); navigate("/profile"); } catch(e) { setError((e as Error).message); } finally { setBusy(false); }
           }}
         >
           Save profile theme

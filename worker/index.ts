@@ -1,3 +1,4 @@
+import { cloud } from "./cloud";
 import { createAuth } from "./auth";
 import { admin } from "./admin";
 import { parties } from "./parties";
@@ -58,7 +59,7 @@ export default {
           google: Boolean(ready && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
           apple: Boolean(ready && env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET),
         });
-        return json({ ready, mode: ready ? "shared" : "preview" });
+        return json({ ready, mode: ready ? "shared" : "unavailable" });
       }
       if (
         !configured(env) ||
@@ -66,7 +67,7 @@ export default {
       )
         throw new HttpError(
           503,
-          "Shared accounts are not connected yet. The local preview is still available.",
+          "The account service is unavailable. Please try again shortly.",
         );
       let schemaReady = false;
       try {
@@ -101,6 +102,7 @@ export default {
       const db = env.DB!,
         person = await identity(request, env, false),
         viewer = person?.user_id || null;
+      if (path.startsWith("/api/cloud/")) return await cloud(request, env, person);
       if (path === "/api/parties" || path.startsWith("/api/parties/")) return await parties(request, env, person);
       if (path === "/api/me" && request.method === "GET") {
         if (!person) return json({ profile: null });

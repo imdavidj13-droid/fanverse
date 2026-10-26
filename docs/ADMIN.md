@@ -1,6 +1,6 @@
 # Administration scope
 
-The administration area is a first operational foundation, not a claim to reproduce every internal X/Twitter tool. Its data comes from the shared database, not the local preview.
+The administration area is a first operational foundation, not a claim to reproduce every internal X/Twitter tool. Its data comes from the shared database. There is no administrative sample mode.
 
 ## Implemented
 
@@ -45,4 +45,4 @@ Private messages, live listening rooms, algorithm tuning and advertising tools a
 
 ## Catalogue administration added
 
-The canonical directory now has `/admin/fandoms` and `/admin/fandom-requests`. Administrators can review unclear source subjects, archive/restore directory entries and merge genuine duplicate records while preserving posts, memberships, aliases and old routes. Moderators have read access. This foundation waits for the D1 connection; the public catalogue search and local setup list work independently. See [CATALOGUE.md](CATALOGUE.md) for the exact boundaries and migration.
+The canonical directory now has `/admin/fandoms` and `/admin/fandom-requests`. Administrators can review unclear source subjects, archive/restore directory entries and merge genuine duplicate records while preserving posts, memberships, aliases and old routes. Moderators have read access. These screens require the connected D1 database and a real staff account. See [CATALOGUE.md](CATALOGUE.md) for the exact boundaries and migration.

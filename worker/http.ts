@@ -15,10 +15,10 @@ export function json(value: unknown, status = 200) {
     },
   });
 }
-export async function body(request: Request): Promise<Record<string, unknown>> {
+export async function body(request: Request, maxBytes = 12000): Promise<Record<string, unknown>> {
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new HttpError(415, "Use JSON for this request.");
-  if (Number(request.headers.get("content-length") || 0) > 12000)
+  if (Number(request.headers.get("content-length") || 0) > maxBytes)
     throw new HttpError(413, "Request is too large.");
   const reader = request.body?.getReader(),
     chunks: Uint8Array[] = [];
@@ -28,7 +28,7 @@ export async function body(request: Request): Promise<Record<string, unknown>> {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 12000) {
+      if (size > maxBytes) {
         void reader.cancel();
         throw new HttpError(413, "Request is too large.");
       }

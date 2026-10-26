@@ -1,6 +1,6 @@
 # Connect the dedicated Cloudflare backend
 
-All commands are run from the repository root with Node.js 22 or newer. The existing local preview remains available until backend configuration is complete. No existing WSL Stats database is used.
+All commands are run from the repository root with Node.js 22 or newer. The application requires a connected account service and the full migration set; it never falls back to a browser preview. No existing WSL Stats database is used.
 
 ## Local development
 
@@ -64,7 +64,7 @@ The sender currently integrates with Resend's email API. Production registration
 
 Deploy with the existing Cloudflare Git build command `npm run build` and deploy command `npx wrangler deploy`. After changing secrets/variables in Cloudflare, ensure the deployed Worker version has those settings.
 
-Visit `/api/status`: it should return `{"ready":true,"mode":"shared"}`. If configuration, database migration or origin matching is incomplete, the shared account screen remains in setup mode. This is intentional; it does not pretend browser-only data has become shared.
+Visit `/api/status`: it should return `{"ready":true,"mode":"shared"}`. If configuration, database migration or origin matching is incomplete, the application shows a connection error.
 
 Create and verify your own account, then open `/account` to initialize its community profile. Grant the first production administrator through your authenticated owner CLI:
 
@@ -92,7 +92,7 @@ You can search `/catalogue` and stage records before configuring any database. A
 
 The standalone entry is at `/join` (also the first-visit root screen), with `/login` for returning users. `/api/auth-methods` exposes availability flags only; no provider IDs, secrets, phone numbers or tokens are returned.
 
-- **Email:** uses the existing verified email/password setup above. The signup card previews the form but disables submission while that setup is incomplete.
+- **Email:** uses the existing verified email/password setup above. The signup card exposes email only when email delivery is configured.
 - **Google:** set Worker variables/secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Register the exact callback `https://YOUR-SITE/api/auth/callback/google` in the provider console. Store the secret as a Worker Secret. OAuth is launched only after the account service is ready.
 - **Apple:** set `APPLE_CLIENT_ID` (Service ID) and `APPLE_CLIENT_SECRET` (Apple-signed client-secret JWT). Register `https://YOUR-SITE/api/auth/callback/apple` in Apple’s service configuration. Apple requires a valid HTTPS domain and Apple Developer setup. The generated client-secret JWT must be renewed before it expires; the repository does not purchase a developer account or generate a private key. Only the exact Apple form-post callback permits Apple’s origin, with a 12 KB body limit; Better Auth continues to validate OAuth state and identity tokens. Other cross-origin mutations remain rejected.
 - **Phone:** not enabled. An SMS provider, delivery configuration and abuse controls must be chosen before phone verification can be implemented. The current button explains its status without collecting a phone number.
@@ -110,3 +110,10 @@ These code paths were tested using synthetic credentials without Resend, includi
 
 ## Signup onboarding
 Apply `0005_onboarding.sql` using `npx wrangler d1 migrations apply fanverse-db --remote`. Accounts without a completed onboarding record enter the name, private date of birth, and unique username flow. Birthdays are stored separately from public profiles. Username availability is advisory; the database unique constraint is enforced again on completion.
+
+
+## Cloud-only release
+
+Apply `0006_cloud_site.sql` with `npx wrangler d1 migrations apply fanverse-db --remote` after pulling main. This adds the profile, media/poll, repost/vote, draft, message, notification, collection and event tables. Existing accounts, shared posts and memberships are preserved. The main application no longer reads or writes localStorage/sessionStorage. There is no administrative sample mode or disconnected creation flow.
+
+Deployment preserves runtime configuration with `keep_vars: true`. The production URL is tracked in `wrangler.jsonc`; Google client credentials and the Better Auth secret must remain encrypted Worker secrets. Do not replace these with sample values.

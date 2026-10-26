@@ -29,7 +29,7 @@ export function parseRoute(path: string) {
   const clean = path.replace(/\/+$/, "") || "/";
   if (/^\/fandoms\/[a-z0-9-]+-q[1-9]\d*$/.test(clean))
     return { page: "Catalogue fandom", fandom: "", found: true };
-  if (/^\/parties\/(?:[1-9]\d*|local-[a-f0-9-]{36})$/.test(clean))
+  if (/^\/parties\/[1-9]\d*$/.test(clean))
     return { page: "Listening party", fandom: "", found: true };
   if (/^\/posts\/[1-9]\d*$/.test(clean))
     return { page: "Post", fandom: "", found: true };
