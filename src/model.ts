@@ -1,3 +1,4 @@
+import { restoreCollections, type BookmarkCollection } from "./bookmarkCollections";
 import { defaultProfileStyle, type ProfileStyle } from "./profileTheme";
 import { initialPosts, type Post } from "./data";
 import { defaultPreferences, type Activity } from "./activity";
@@ -16,6 +17,8 @@ export type State = {
   muted: string[];
   liked: number[];
   saved: number[];
+  bookmarkCollections: BookmarkCollection[];
+  bookmarkAssignments: Record<number,string>;
   reposted: number[];
   votes: Record<number, number>;
   replies: Record<number, Reply[]>;
@@ -37,6 +40,8 @@ export function freshState(): State {
     muted: [],
     liked: [],
     saved: [],
+    bookmarkCollections: [],
+    bookmarkAssignments: {},
     reposted: [],
     votes: {},
     replies: {},
@@ -63,6 +68,7 @@ export function loadState(): State {
     return {
       ...freshState(),
       ...value,
+      ...restoreCollections(value.bookmarkCollections,value.bookmarkAssignments,value.saved),
       profileStyle: { ...defaultProfileStyle, ...value.profileStyle },
       preferences: { ...defaultPreferences, ...value.preferences },
       activity: Array.isArray(value.activity) ? value.activity : [],
@@ -126,4 +132,11 @@ export function filterPosts(
           .toLowerCase()
           .includes(query.toLowerCase())),
   );
+}
+
+export function saveToCollection(state: State, postId: number, collectionId: string): State {
+  if(collectionId && !state.bookmarkCollections.some(c=>c.id===collectionId))return state;
+  const assignments={...state.bookmarkAssignments};
+  if(collectionId)assignments[postId]=collectionId;else delete assignments[postId];
+  return {...state,saved:state.saved.includes(postId)?state.saved:[...state.saved,postId],bookmarkAssignments:assignments};
 }

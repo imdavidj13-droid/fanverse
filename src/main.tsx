@@ -32,6 +32,7 @@ import { Composer, Avatar } from "./Composer";
 import { PostCard } from "./PostCard";
 import { ProfilePage } from "./Profile";
 import { LiveArea } from "./LiveArea";
+import { BookmarksPage } from "./BookmarksPage";
 import { HomeFeed, HomeSidebar } from "./HomeFeed";
 import { SignupLanding } from "./SignupLanding";
 import { api } from "./api";
@@ -304,6 +305,8 @@ function App() {
                     <FandomPage key={community.id} community={community} state={state} update={update} onNotice={setNotice} />
                   ) : page === "Home" ? (
                     <HomeFeed state={state} update={update} onNotice={setNotice} onPublish={publish} />
+                  ) : page === "Bookmarks" ? (
+                    <BookmarksPage state={state} update={update} onNotice={setNotice} />
                   ) : page === "Profile" ? (
                     <ProfilePage state={state} update={update} onNotice={setNotice} onCompose={()=>setCompose(true)} />
                   ) : ["Account", "Community", "Admin"].includes(page) ? (

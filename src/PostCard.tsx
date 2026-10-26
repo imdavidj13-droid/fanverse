@@ -9,7 +9,7 @@ import {
   Share2,
 } from "lucide-react";
 import { fandoms, type Post } from "./data";
-import { pollResults, type State } from "./model";
+import { pollResults, saveToCollection, type State } from "./model";
 import { Avatar } from "./Composer";
 import { AppLink } from "./Navigation";
 import { MediaViewer } from "./MediaViewer";
@@ -45,12 +45,11 @@ export function PostCard({
     replies = state.replies[p.id] || [],
     percent = pollResults(p, vote);
   const toggle = (key: "liked" | "saved" | "reposted") =>
-    update((s) => ({
-      ...s,
-      [key]: s[key].includes(p.id)
-        ? s[key].filter((id) => id !== p.id)
-        : [...s[key], p.id],
-    }));
+    update(s => {
+      const assignments={...s.bookmarkAssignments};
+      if(key === "saved" && s.saved.includes(p.id))delete assignments[p.id];
+      return {...s,bookmarkAssignments:assignments,[key]:s[key].includes(p.id)?s[key].filter(id=>id!==p.id):[...s[key],p.id]};
+    });
   const moderate = (key: "blocked" | "muted") => {
     update((s) => ({
       ...s,
@@ -109,6 +108,14 @@ export function PostCard({
       </AppLink>
       {menu && (
         <div className="post-menu">
+          {state.bookmarkCollections.length>0 && <label className="post-collection-field">
+            {saved ? "Move bookmark to collection" : "Save to collection"}
+            <select aria-label={"Collection for post " + p.id} value={saved ? state.bookmarkAssignments[p.id] || "" : ""} onChange={e=>{const id=e.target.value;update(s=>saveToCollection(s,p.id,id));setMenu(false);onNotice("Bookmark collection updated on this browser.");}}>
+              <option value="">{saved ? "Unfiled" : "Choose a collection…"}</option>
+              {state.bookmarkCollections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>}
+
           {p.own ? (
             <>
               <button
@@ -176,14 +183,17 @@ export function PostCard({
               onClick={() =>
                 update((s) => {
                   const votes = { ...s.votes },
-                    replies = { ...s.replies };
+                    replies = { ...s.replies },
+                    assignments = { ...s.bookmarkAssignments };
                   delete votes[p.id];
                   delete replies[p.id];
+                  delete assignments[p.id];
                   return {
                     ...s,
                     posts: s.posts.filter((post) => post.id !== p.id),
                     liked: s.liked.filter((id) => id !== p.id),
                     saved: s.saved.filter((id) => id !== p.id),
+                    bookmarkAssignments: assignments,
                     reposted: s.reposted.filter((id) => id !== p.id),
                     votes,
                     replies,
